@@ -14,7 +14,7 @@ fullnameOverride: ""
 
 server:
   port: 7001
-  contextPath: /youtube-service
+  contextPath: /
 
 env:
   - name: YT_SERVICE_ENV

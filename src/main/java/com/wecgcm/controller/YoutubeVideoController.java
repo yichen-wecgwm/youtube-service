@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Getter
 @RequiredArgsConstructor(onConstructor_= @Autowired)
 @RestController
-@RequestMapping("/video")
+@RequestMapping("${spring.application.name}/video")
 public class YoutubeVideoController extends YoutubeController{
     private final YoutubeService youtubeService;
 }
