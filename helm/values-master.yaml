@@ -17,16 +17,11 @@ server:
   contextPath: /youtube-service
 
 env:
-  - name: MOCK_API_KEY
+  - name: YT-SERVICE-ENV
     valueFrom:
       configMapKeyRef:
         name: java-config
-        key: MOCK_API_KEY
-  - name: MOCK_API_ENABLE
-    valueFrom:
-      configMapKeyRef:
-        name: java-config
-        key: MOCK_API_ENABLE
+        key: YT-SERVICE-ENV
 
 #envFrom:
 #  - secretRef:

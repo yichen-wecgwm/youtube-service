@@ -27,7 +27,7 @@ public class FFmpegWrapperConfig {
     @Bean
     public FFmpegExecutor executor(){
         try {
-            FFmpeg fFmpeg = new FFmpeg(path);
+            FFmpeg fFmpeg = new FFmpeg();
             return new FFmpegExecutor(fFmpeg);
         } catch (IOException e) {
             Counter.builder("config")

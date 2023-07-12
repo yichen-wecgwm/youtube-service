@@ -18,7 +18,7 @@ management:
       application: ${spring.application.name}
 
 yt-service:
-  env: ${YT-ENV:dev}
+  env: ${YT-SERVICE-ENV:dev}
 
 yt-dl:
   retry: ${YT-DL_RETRY:3}
