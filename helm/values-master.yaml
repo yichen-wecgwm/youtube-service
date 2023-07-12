@@ -17,11 +17,11 @@ server:
   contextPath: /youtube-service
 
 env:
-  - name: YT-SERVICE-ENV
+  - name: YT_SERVICE_ENV
     valueFrom:
       configMapKeyRef:
         name: java-config
-        key: YT-SERVICE-ENV
+        key: YT_SERVICE_ENV
 
 #envFrom:
 #  - secretRef:

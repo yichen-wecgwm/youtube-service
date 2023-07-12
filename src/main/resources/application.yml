@@ -18,10 +18,7 @@ management:
       application: ${spring.application.name}
 
 yt-service:
-  env: ${YT-SERVICE-ENV:dev}
+  env: ${YT_SERVICE_ENV:dev}
 
 yt-dl:
-  retry: ${YT-DL_RETRY:3}
-
-ffmpeg:
-  path: ${FFMPEG_PATH:D:\yt-dlp\ffmpeg-5.0.1-essentials_build\bin\ffmpeg}
+  retry: ${YT_DL_RETRY:3}
