@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: youtube-service
+  profiles:
+    active: ${ENV:dev}
+
+server:
+  port: 7001
+  servlet:
+    context-path: /youtube-service
+  shutdown:  graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+yt-dl:
+  retry: ${YT-DL_RETRY:3}
+
+ffmpeg:
+  path: ${FFMPEG_PATH:D:\yt-dlp\ffmpeg-5.0.1-essentials_build\bin\ffmpeg}

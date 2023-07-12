@@ -1,0 +1,76 @@
+replicaCount: 1
+
+image:
+  repository: wecgwm/youtube-service
+  pullPolicy: Always
+  tag: "master"
+
+podLabels:
+  metrics: enable
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+server:
+  port: 7001
+  contextPath: /youtube-service
+
+env:
+  - name: MOCK_API_KEY
+    valueFrom:
+      configMapKeyRef:
+        name: java-config
+        key: MOCK_API_KEY
+  - name: MOCK_API_ENABLE
+    valueFrom:
+      configMapKeyRef:
+        name: java-config
+        key: MOCK_API_ENABLE
+
+#envFrom:
+#  - secretRef:
+#      name:  java-secret
+
+resources:
+  limits:
+    cpu: 300m
+    memory: 400Mi
+  requests:
+    cpu: 50m
+    memory: 100Mi
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 7001
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
