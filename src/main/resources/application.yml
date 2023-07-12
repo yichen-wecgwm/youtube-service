@@ -17,6 +17,10 @@ management:
     tags:
       application: ${spring.application.name}
 
+logging:
+  file:
+    path: logs
+
 yt-service:
   env: ${YT_SERVICE_ENV:dev}
 
