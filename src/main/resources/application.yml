@@ -19,7 +19,7 @@ management:
 
 logging:
   file:
-    path: log/${POD_NAME}
+    path: log/${spring.application.name}/${POD_NAME}
 
 yt-service:
   env: ${YT_SERVICE_ENV:dev}
