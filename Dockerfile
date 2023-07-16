@@ -6,6 +6,7 @@ RUN java -Djarmode=layertools -jar application.jar extract
 
 FROM eclipse-temurin:17.0.7_7-jre
 WORKDIR application
+RUN mkdir video && chmod a+w video
 RUN apt-get update && apt-get install ffmpeg -y
 RUN addgroup --system springboot && adduser --system springboot --ingroup springboot
 USER springboot

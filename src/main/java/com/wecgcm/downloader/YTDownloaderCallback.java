@@ -9,6 +9,7 @@ import com.wecgcm.util.YoutubeFileUtil;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.bramp.ffmpeg.FFmpegExecutor;
@@ -69,8 +70,11 @@ public class YTDownloaderCallback implements YoutubeCallback<File> {
                 .setVideoCodec(FFMPEG_NOT_CODE)
                 .done();
         // upload and delete
+        Timer.Sample timer = Timer.start();
         CompletableFuture.runAsync(fFmpegExecutor.createJob(fFmpegBuilder), FFMPEG_THREAD_POOL)
                 .whenCompleteAsync((__, e) -> {
+                            timer.stop(Timer.builder("ffmpeg_encode")
+                                    .register(Metrics.globalRegistry));
                             // upload to minio
                             minioService.upload(videoId);
                             // delete

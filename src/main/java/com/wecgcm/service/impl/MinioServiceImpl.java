@@ -3,7 +3,11 @@ package com.wecgcm.service.impl;
 import cn.hutool.core.text.StrPool;
 import com.wecgcm.exception.UploadException;
 import com.wecgcm.service.MinioService;
-import io.minio.*;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
+import io.minio.MinioClient;
+import io.minio.ObjectWriteResponse;
+import io.minio.UploadObjectArgs;
 import io.minio.errors.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,12 +32,15 @@ public class MinioServiceImpl implements MinioService {
     @Override
     public void upload(String videoId) {
         try {
+            Timer.Sample timer = Timer.start();
             ObjectWriteResponse objectWriteResponse = minioClient.uploadObject(
                     UploadObjectArgs.builder()
                             .bucket(OUT_PUT_DIR)
                             .object(videoId + StrPool.SLASH + videoId + VIDEO_EXT)
                             .filename(OUT_PUT_DIR + StrPool.SLASH + videoId + VIDEO_EXT)
                             .build());
+            timer.stop(Timer.builder("minio_upload")
+                    .register(Metrics.globalRegistry));
             if (objectWriteResponse == null) {
                 throw new UploadException("minio upload fail, resp is null");
             }
