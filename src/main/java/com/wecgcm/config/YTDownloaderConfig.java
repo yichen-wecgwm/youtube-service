@@ -26,7 +26,7 @@ public class YTDownloaderConfig {
     private static final String DEV = "dev";
     private final ThreadPoolExecutor DOWNLOAD_THREAD_POOL = new ThreadPoolExecutor(2, 10, 60, TimeUnit.MINUTES,
             new ArrayBlockingQueue<>(5), new ThreadFactoryBuilder().setNameFormat("yt-dl-%d").build());
-    @Value("${yt-service.env}")
+    @Value("${spring.profiles.active}")
     private String env;
     @Value("${yt-dl.retry}")
     private int retry;

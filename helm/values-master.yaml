@@ -22,6 +22,8 @@ env:
       configMapKeyRef:
         name: java-config
         key: YT_SERVICE_ENV
+  - name: SPRING_PROFILES_ACTIVE
+    value: prod
 
 #envFrom:
 #  - secretRef:

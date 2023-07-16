@@ -4,8 +4,10 @@ import cn.hutool.core.text.StrPool;
 import cn.hutool.json.JSONUtil;
 import com.github.kiulian.downloader.YoutubeDownloader;
 import com.github.kiulian.downloader.downloader.YoutubeCallback;
+import com.github.kiulian.downloader.downloader.request.RequestSearchResult;
 import com.github.kiulian.downloader.downloader.request.RequestVideoFileDownload;
 import com.github.kiulian.downloader.downloader.response.Response;
+import com.github.kiulian.downloader.model.search.*;
 import com.github.kiulian.downloader.model.videos.VideoInfo;
 import com.github.kiulian.downloader.model.videos.formats.Format;
 import com.wecgcm.service.YouTubeVideoService;
@@ -45,6 +47,10 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                         .async()
                 )
         );
+//        // download in-memory to OutputStream
+//        OutputStream os = new ByteArrayOutputStream();
+//        RequestVideoStreamDownload request = new RequestVideoStreamDownload(bestFormat.get(0), os);
+//        Response<Void> response = downloader.downloadVideoStream(request);
     }
 
     @Deprecated
@@ -61,6 +67,19 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                         .renameTo("id + " + f.itag().id() + ", videoQ: " + f.itag().videoQuality().name())
                         .overwriteIfExists(true))
         );
+    }
+
+    @Override
+    public List<String> search(String query) {
+        RequestSearchResult request = new RequestSearchResult(query);
+        SearchResult result = downloader.search(request).data();
+        // items, 20 max per result (+ possible shelves on first result)
+        List<SearchResultItem> items = result.items();
+        List<SearchResultVideoDetails> videos = result.videos();
+        List<SearchResultChannelDetails> channels = result.channels();
+        List<SearchResultPlaylistDetails> playlists = result.playlists();
+        List<SearchResultShelf> shelves = result.shelves();
+        return shelves.get(0).videos().stream().map(SearchResultVideoDetails::videoId).toList();
     }
 
 }

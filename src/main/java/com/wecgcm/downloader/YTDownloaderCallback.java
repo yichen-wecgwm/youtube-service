@@ -4,6 +4,7 @@ import cn.hutool.core.text.StrPool;
 import com.github.kiulian.downloader.downloader.YoutubeCallback;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.wecgcm.exception.DownloadException;
+import com.wecgcm.service.MinioService;
 import com.wecgcm.util.YoutubeFileUtil;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
@@ -36,13 +37,14 @@ public class YTDownloaderCallback implements YoutubeCallback<File> {
     private static final String FFMPEG_NOT_CODE = "copy";
     private final Map<String, String> BEST_VIDEO_ID_MAP = new HashMap<>();
     private final FFmpegExecutor fFmpegExecutor;
+    private final MinioService minioService;
     private final ThreadPoolExecutor FFMPEG_THREAD_POOL = new ThreadPoolExecutor(4, 4, 60, TimeUnit.MINUTES,
             new ArrayBlockingQueue<>(5), new ThreadFactoryBuilder().setNameFormat("ffmepg-merge-%d").build());
 
     {
         Gauge.builder("thread.pool.active.ffmpeg", FFMPEG_THREAD_POOL::getActiveCount)
                 .tag("active", "count")
-                .register(Metrics.globalRegistry);;
+                .register(Metrics.globalRegistry);
         Gauge.builder("thread.pool.queue.ffmpeg", () -> FFMPEG_THREAD_POOL.getQueue().size())
                 .tag("queue", "size")
                 .register(Metrics.globalRegistry);
@@ -58,32 +60,37 @@ public class YTDownloaderCallback implements YoutubeCallback<File> {
         }
         File anthorFile = new File(BEST_VIDEO_ID_MAP.remove(videoId));
         // merge
+        String filePath = OUT_PUT_DIR + StrPool.SLASH + videoId + VIDEO_EXT;
         FFmpegBuilder fFmpegBuilder = new FFmpegBuilder()
                 .addInput(file.getPath())
                 .addInput(anthorFile.getPath())
-                .addOutput(OUT_PUT_DIR + StrPool.SLASH + videoId + VIDEO_EXT)
+                .addOutput(filePath)
                 .setAudioCodec(FFMPEG_NOT_CODE)
                 .setVideoCodec(FFMPEG_NOT_CODE)
                 .done();
-        // delete original file when complete
+        // upload and delete
         CompletableFuture.runAsync(fFmpegExecutor.createJob(fFmpegBuilder), FFMPEG_THREAD_POOL)
-                .whenCompleteAsync((__, e) ->
-                                Stream.of(file, anthorFile).filter(f -> !f.delete()).forEach(f -> {
-                                    Counter.builder("video_download")
-                                            .tag("file", "delete_fail")
-                                            .register(Metrics.globalRegistry)
-                                            .increment();
-                                    log.warn("video download: original file delete fail, name:{}", f.getPath());
-                                })
+                .whenCompleteAsync((__, e) -> {
+                            // upload to minio
+                            minioService.upload(videoId);
+                            // delete
+                            Stream.of(file, anthorFile, new File(filePath)).filter(f -> !f.delete()).forEach(f -> {
+                                Counter.builder("downloader_callback")
+                                        .tag("file", "delete_fail")
+                                        .register(Metrics.globalRegistry)
+                                        .increment();
+                                log.warn("downloader callback: file delete fail, name:{}", f.getPath());
+                            });
+                        }
                         , FFMPEG_THREAD_POOL);
     }
 
     @Override
     public void onError(Throwable throwable) {
         Counter.builder("video_download")
-                .tag("exception", "ffmpeg_merge")
+                .tag("on", "error")
                 .register(Metrics.globalRegistry)
                 .increment();
-        throw new DownloadException("ffmpeg_async_merge_exception", throwable);
+        throw new DownloadException("video_download_on_error", throwable);
     }
 }

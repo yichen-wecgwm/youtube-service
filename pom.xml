@@ -19,7 +19,6 @@
         <maven.compiler.target>17</maven.compiler.target>
         <lombok.version>1.18.24</lombok.version>
         <hutool.version>5.8.5</hutool.version>
-        <guava.version>31.1-jre</guava.version>
     </properties>
 
     <repositories>
@@ -63,11 +62,6 @@
             <version>${hutool.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.github.sealedtx</groupId>
             <artifactId>java-youtube-downloader</artifactId>
             <version>3.2.3</version>
@@ -76,6 +70,22 @@
             <groupId>net.bramp.ffmpeg</groupId>
             <artifactId>ffmpeg</artifactId>
             <version>0.7.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>8.5.4</version>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.11.0</version>
         </dependency>
     </dependencies>
 
