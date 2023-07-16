@@ -17,13 +17,23 @@ server:
   contextPath: /
 
 env:
-  - name: YT_SERVICE_ENV
+  - name: SPRING_PROFILES_ACTIVE
+    value: prod
+  - name: MINIO_ENDPOINT
     valueFrom:
       configMapKeyRef:
         name: java-config
-        key: YT_SERVICE_ENV
-  - name: SPRING_PROFILES_ACTIVE
-    value: prod
+        key: MINIO_ENDPOINT
+  - name: MINIO_ACCESS_KEY
+    valueFrom:
+      configMapKeyRef:
+        name: java-config
+        key: MINIO_ACCESS_KEY
+  - name: MINIO_SECRET_KEY
+    valueFrom:
+      configMapKeyRef:
+        name: java-config
+        key: MINIO_SECRET_KEY
 
 #envFrom:
 #  - secretRef:
