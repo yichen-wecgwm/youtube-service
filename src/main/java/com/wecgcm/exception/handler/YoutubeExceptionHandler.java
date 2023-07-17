@@ -22,7 +22,7 @@ public class YoutubeExceptionHandler {
     }
 
     private void recordOnException(Throwable e){
-        log.error("msg:{}", e.getMessage(), e.getCause() != null ? e.getCause() : e);
+        log.error("msg:{}", e.getMessage(), e);
         Counter.builder("exception.handler")
                 .tag("exception", e.getClass().getSimpleName())
                 .register(Metrics.globalRegistry)

@@ -64,6 +64,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
         CompletableFuture.supplyAsync(() -> {
                     String proxy = env.equals(DEV) ? PROXY_DEV : PROXY_NONE;
                     List<String> args = ImmutableList.<String>builder()
+                            .add("-vU")
                             .add(ytDLP)
                             .add(PROXY_OP)
                             .add(proxy)
