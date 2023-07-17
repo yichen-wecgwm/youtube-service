@@ -19,6 +19,8 @@ server:
 env:
   - name: SPRING_PROFILES_ACTIVE
     value: prod
+  - name: YT_DLP_PATH
+    value: yt-dlp
   - name: MINIO_ENDPOINT
     valueFrom:
       configMapKeyRef:
