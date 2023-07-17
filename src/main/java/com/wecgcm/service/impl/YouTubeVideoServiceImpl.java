@@ -83,6 +83,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                     // todo http call
                     log.info("videoId: {}", result);
                     if (e != null) {
+                        log.error("{}, cause :{}", e, e.getCause());
                         throw new RuntimeException(e);
                     }
                 });
