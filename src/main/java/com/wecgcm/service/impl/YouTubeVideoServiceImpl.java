@@ -3,6 +3,7 @@ package com.wecgcm.service.impl;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.wecgcm.exception.ProcessException;
+import com.wecgcm.exception.handler.YoutubeExceptionHandler;
 import com.wecgcm.service.MinioService;
 import com.wecgcm.service.YouTubeVideoService;
 import io.micrometer.core.instrument.Gauge;
@@ -40,6 +41,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     public static final String OUT_PUT_OP = "-o";
     public static final String OUT_PUT = "-";
     private final MinioService minioService;
+    private final YoutubeExceptionHandler exceptionHandler;
     @Value("${yt-dlp.path}")
     private String ytDLP;
     @Value("${spring.profiles.active}")
@@ -73,6 +75,9 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                             .add(YOUTUBE_VIDEO_URL_PREFIX + videoId)
                             .build();
                     log.info(String.join(" ", args));
+                    if (1 == 1) {
+                        throw new RuntimeException();
+                    }
                     try {
                         return minioService.upload(videoId, new ProcessBuilder(args).start());
                     } catch (IOException e) {
@@ -83,10 +88,9 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                     // todo http call
                     log.info("videoId: {}", result);
                     if (e != null) {
-                        log.error("{}, cause :{}", e, e.getCause());
                         throw new RuntimeException(e);
                     }
-                });
+                }).exceptionally(e -> exceptionHandler.lastHandler(e).getData());
     }
 
     /**

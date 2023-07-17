@@ -16,13 +16,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class YoutubeExceptionHandler {
 
     @ExceptionHandler(Exception.class)
-    public Response<String> lastHandler(Exception e){
+    public Response<String> lastHandler(Throwable e){
         recordOnException(e);
         return Response.from(e);
     }
 
-    private void recordOnException(Exception e){
-        log.error("{}; cause :{} ",  e, e.getCause());
+    private void recordOnException(Throwable e){
+        log.error("msg:{}", e.getMessage(), e.getCause() != null ? e.getCause() : e);
         Counter.builder("exception.handler")
                 .tag("exception", e.getClass().getSimpleName())
                 .register(Metrics.globalRegistry)

@@ -26,19 +26,19 @@ public class Response<T> {
         return Response.<T>defaultSuccessBuilder().data(data).build();
     }
 
-    public static Response<String> from(Exception e, String code, String data) {
+    public static Response<String> from(Throwable e, String code, String data) {
         return Response.<String>builder().code(code).msg(optionalCause(e)).data(data).build();
     }
 
-    public static Response<String> from(Exception e, String data) {
+    public static Response<String> from(Throwable e, String data) {
         return Response.<String>defaultErrorBuilder(e).data(data).build();
     }
 
-    public static Response<String> from(Exception e) {
+    public static Response<String> from(Throwable e) {
         return Response.<String>defaultErrorBuilder(e).data(e.getMessage()).build();
     }
 
-    private static <T> Response.ResponseBuilder<T> defaultErrorBuilder(Exception e){
+    private static <T> Response.ResponseBuilder<T> defaultErrorBuilder(Throwable e){
         return Response.<T>builder().code(StatusCode.DEFAULT_ERROR.getCode()).msg(optionalCause(e));
     }
 
@@ -46,7 +46,7 @@ public class Response<T> {
         return Response.<T>builder().code(StatusCode.DEFAULT_SUCCESS.getCode()).msg(StatusCode.DEFAULT_SUCCESS.getMsg());
     }
 
-    private static String optionalCause(Exception e){
+    private static String optionalCause(Throwable e){
         return Optional.ofNullable(e.getCause()).orElse(e).getMessage();
     }
 }
