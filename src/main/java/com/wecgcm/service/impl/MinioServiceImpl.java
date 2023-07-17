@@ -59,6 +59,8 @@ public class MinioServiceImpl implements MinioService {
                  NoSuchAlgorithmException | IOException | InvalidResponseException | InvalidKeyException |
                  InternalException e) {
             throw new RuntimeException(e);
+        }finally {
+            process.destroy();
         }
         return videoId;
     }
