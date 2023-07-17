@@ -43,7 +43,7 @@ public class MinioServiceImpl implements MinioService {
                             .stream(inputStream, -1, 10485760)
                             .contentType("video/mp4")
                             .build());
-            if (process.exitValue() == 0 && !videoId.startsWith(DASHED)) {
+            if (process.exitValue() != 0) {
                 throw new ProcessException("process exit error");
             }
             if (objectWriteResponse == null) {
