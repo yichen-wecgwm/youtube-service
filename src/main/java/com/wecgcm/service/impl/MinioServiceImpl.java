@@ -12,7 +12,9 @@ import io.minio.errors.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.FileCopyUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
@@ -29,6 +31,7 @@ public class MinioServiceImpl implements MinioService {
     private static final String SLASH = "/";
     private static final String VIDEO_EXT = ".webm";
     public static final String VIDEO_TYPE = "video/webm";
+    public static final String ERROR = ".error";
     private final MinioClient minioClient;
 
     @Override
@@ -44,6 +47,7 @@ public class MinioServiceImpl implements MinioService {
                             .contentType(VIDEO_TYPE)
                             .build());
             if (process.exitValue() != 0) {
+                FileCopyUtils.copy(FileCopyUtils.copyToByteArray(process.getErrorStream()), new File(videoId + ERROR));
                 throw new ProcessException("process exit error");
             }
             if (objectWriteResponse == null) {

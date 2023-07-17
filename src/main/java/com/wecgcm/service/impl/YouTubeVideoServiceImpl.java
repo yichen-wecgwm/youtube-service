@@ -75,9 +75,6 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                             .add(YOUTUBE_VIDEO_URL_PREFIX + videoId)
                             .build();
                     log.info(String.join(" ", args));
-                    if (1 == 1) {
-                        throw new RuntimeException();
-                    }
                     try {
                         return minioService.upload(videoId, new ProcessBuilder(args).start());
                     } catch (IOException e) {
