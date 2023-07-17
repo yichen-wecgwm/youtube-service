@@ -23,8 +23,8 @@ logging:
   file:
     path: log/${spring.application.name}/${POD_NAME:local_dev}
 
-yt-dl:
-  retry: ${YT_DL_RETRY:3}
+yt-dlp:
+  path: ${YT_DLP_PATH:D:\\yt-dlp\\yt-dlp}
 
 minio:
   endpoint: ${MINIO_ENDPOINT}

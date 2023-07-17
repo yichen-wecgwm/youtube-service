@@ -21,13 +21,6 @@
         <hutool.version>5.8.5</hutool.version>
     </properties>
 
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
-
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -55,27 +48,6 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
             <version>${lombok.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-all</artifactId>
-            <version>${hutool.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.sealedtx</groupId>
-            <artifactId>java-youtube-downloader</artifactId>
-            <version>3.2.3</version>
-        </dependency>
-        <dependency>
-            <groupId>net.bramp.ffmpeg</groupId>
-            <artifactId>ffmpeg</artifactId>
-            <version>0.7.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.guava</groupId>
-                    <artifactId>guava</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.minio</groupId>

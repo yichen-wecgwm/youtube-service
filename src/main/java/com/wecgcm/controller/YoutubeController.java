@@ -18,11 +18,5 @@ public abstract class YoutubeController {
         return Response.ok();
     }
 
-    @PostMapping("/downloadAllFormat")
-    public Response<String> downloadAllFormat(@RequestBody YoutubeRequest request){
-        getYoutubeService().downloadAllFormat(request.getId());
-        return Response.ok();
-    }
-
     abstract YoutubeService getYoutubeService();
 }
