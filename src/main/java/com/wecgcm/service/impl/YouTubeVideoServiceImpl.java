@@ -32,7 +32,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     private static final String YOUTUBE_VIDEO_URL_PREFIX = "https://www.youtube.com/watch?v=";
     private static final String DEV = "dev";
     public static final String PROXY_DEV = "127.0.0.1:7890";
-    public static final String EMPTY_STR = " ";
+    public static final String PROXY_NONE = "\"\"";
     public static final String PROXY_OP = "--proxy";
     public static final String FORMAT_OP = "-f";
     public static final String FORMAT = "bestvideo*+bestaudio/best";
@@ -60,7 +60,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     @Override
     public void download(String videoId) {
         CompletableFuture.supplyAsync(() -> {
-                    String proxy = env.equals(DEV) ? PROXY_DEV : EMPTY_STR;
+                    String proxy = env.equals(DEV) ? PROXY_DEV : PROXY_NONE;
                     List<String> args = ImmutableList.<String>builder()
                             .add(ytDLP)
                             .add(PROXY_OP)
@@ -72,7 +72,6 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                             .add(OUT_PUT)
                             .add(YOUTUBE_VIDEO_URL_PREFIX + videoId)
                             .build();
-                    log.info(String.join(EMPTY_STR, args));
                     try {
                         return minioService.upload(videoId, new ProcessBuilder(args).start());
                     } catch (IOException e) {

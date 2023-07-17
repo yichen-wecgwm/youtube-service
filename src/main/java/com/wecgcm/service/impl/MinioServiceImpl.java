@@ -27,8 +27,8 @@ import java.security.NoSuchAlgorithmException;
 public class MinioServiceImpl implements MinioService {
     private static final String BUCKET_NAME = "videos";
     private static final String SLASH = "/";
-    private static final String VIDEO_EXT = ".mp4";
-    public static final String DASHED = "-";
+    private static final String VIDEO_EXT = ".webm";
+    public static final String VIDEO_TYPE = "video/webm";
     private final MinioClient minioClient;
 
     @Override
@@ -41,7 +41,7 @@ public class MinioServiceImpl implements MinioService {
                             .bucket(BUCKET_NAME)
                             .object(videoId + SLASH + videoId + VIDEO_EXT)
                             .stream(inputStream, -1, 10485760)
-                            .contentType("video/mp4")
+                            .contentType(VIDEO_TYPE)
                             .build());
             if (process.exitValue() != 0) {
                 throw new ProcessException("process exit error");
