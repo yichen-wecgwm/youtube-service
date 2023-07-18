@@ -33,7 +33,7 @@ public class MinioServiceImpl implements MinioService {
     private final MinioClient minioClient;
 
     @Override
-    public void upload(String videoId) {
+    public void uploadVideo(String videoId) {
         String filePath = YTDownloadArg.OUT_PUT_DIR + videoId + YTDownloadArg.VIDEO_EXT;
         Timer.Sample timer = Timer.start();
         try {

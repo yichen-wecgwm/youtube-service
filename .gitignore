@@ -2,3 +2,4 @@
 target/
 videos/
 src/main/resources/application-dev.yml
+log/

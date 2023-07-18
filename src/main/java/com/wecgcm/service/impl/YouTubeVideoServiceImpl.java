@@ -51,32 +51,9 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
 
     @Override
     public void download(String videoId) {
-        List<String> args = ytDownloadArg.build(videoId);
-        CompletableFuture.supplyAsync(() -> {
-                    Timer.Sample timer = Timer.start();
-                    ProcessBuilder processBuilder = new ProcessBuilder(args)
-                            .redirectOutput(ProcessBuilder.Redirect.DISCARD);
-                    Process process = null;
-                    try {
-                        process = processBuilder.start();
-                        process.waitFor();
-                        if (process.exitValue() != 0) {
-                            LogUtil.error(process.getErrorStream(), this.getClass());
-                            throw new ProcessException("process exit error");
-                        }
-                    } catch (IOException | InterruptedException e) {
-                        throw new ProcessException("yt-dlp process exception", e);
-                    } finally {
-                        if (process != null) {
-                            process.destroy();
-                        }
-                    }
-                    timer.stop(Timer.builder("yt-dlp-dl")
-                            .register(Metrics.globalRegistry));
-                    log.info("download done, videoId: {}", videoId);
-                    return videoId;
-                }, DOWNLOAD_AND_UPLOAD_THREAD_POOL)
-                .thenAccept(minioService::upload)
+        CompletableFuture.completedStage(videoId)
+                .thenApplyAsync(this::downloadVideo, DOWNLOAD_AND_UPLOAD_THREAD_POOL)
+                .thenAccept(minioService::uploadVideo)
                 .exceptionally(e -> {
                     exceptionHandler.lastHandler(e);
                     return new CompletableFuture<Void>().resultNow();
@@ -95,12 +72,30 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
         return Collections.emptyList();
     }
 
-    /**
-     * wget https://github.com/biliup/biliup-rs/releases/download/v0.1.17/biliupR-v0.1.17-x86_64-linux.tar.xz
-     * apt-get update && apt-get install xz-utils
-     * tar -xf biliupR-v0.1.17-x86_64-linux.tar.xz
-     * ./biliup login
-     * ./biliup upload --copyright 2 --tid 71 --tag "SAKURA" --source "https://www.youtube.com/watch?v=85uATsLB19A" --line bda2 --limit 5 --title "real title123" 85uATsLB19A.webm &> 1.txt
-     */
+    private String downloadVideo(String videoId) {
+        List<String> args = ytDownloadArg.build(videoId);
+        Timer.Sample timer = Timer.start();
+        ProcessBuilder processBuilder = new ProcessBuilder(args)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        Process process = null;
+        try {
+            process = processBuilder.start();
+            process.waitFor();
+            if (process.exitValue() != 0) {
+                LogUtil.error(process.getErrorStream(), this.getClass());
+                throw new ProcessException("process exit error");
+            }
+        } catch (IOException | InterruptedException e) {
+            throw new ProcessException("yt-dlp process exception", e);
+        } finally {
+            if (process != null) {
+                process.destroy();
+            }
+        }
+        timer.stop(Timer.builder("yt-dlp-dl")
+                .register(Metrics.globalRegistry));
+        log.info("download done, videoId: {}", videoId);
+        return videoId;
+    }
 
 }

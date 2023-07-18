@@ -2,5 +2,5 @@ package com.wecgcm.service;
 
 
 public interface MinioService {
-    void upload(String videoId);
+    void uploadVideo(String videoId);
 }
