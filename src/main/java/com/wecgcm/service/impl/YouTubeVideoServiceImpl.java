@@ -70,18 +70,16 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                 .add(ytDLP)
                 .add(FORMAT_OP)
                 .add(FORMAT)
-                //.add(QUIET_OP)
                 .add(OUT_PUT_OP)
                 .add(OUT_PUT_DIR + videoId + VIDEO_EXT)
-                .add(YOUTUBE_VIDEO_URL_PREFIX + videoId)
-                .add("&>")
-                .add("1.txt");
+                .add(YOUTUBE_VIDEO_URL_PREFIX + videoId);
 
         List<String> args = builder.build();
         log.info(String.join(" ", args));
         CompletableFuture.supplyAsync(() -> {
                     Timer.Sample timer = Timer.start();
                     ProcessBuilder processBuilder = new ProcessBuilder(args);
+                    processBuilder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
                     Process process = null;
                     try {
                         process = processBuilder.start();
