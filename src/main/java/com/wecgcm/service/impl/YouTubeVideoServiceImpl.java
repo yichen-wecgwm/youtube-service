@@ -8,17 +8,23 @@ import com.wecgcm.service.MinioService;
 import com.wecgcm.service.YouTubeVideoService;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.FileCopyUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -31,14 +37,14 @@ import java.util.concurrent.*;
 @Service
 public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     private static final String YOUTUBE_VIDEO_URL_PREFIX = "https://www.youtube.com/watch?v=";
+    public static final String VIDEO_EXT = ".webm";
+    public static final String OUT_PUT_DIR = "videos/";
     private static final String DEV = "dev";
-    public static final String PROXY_DEV = "127.0.0.1:7890";
-    public static final String PROXY_OP = "--proxy";
-    public static final String FORMAT_OP = "-f";
-    public static final String FORMAT = "bestvideo*+bestaudio/best";
-    public static final String QUIET_OP = "--quiet";
-    public static final String OUT_PUT_OP = "-o";
-    public static final String OUT_PUT = "-";
+    private static final String FORMAT_OP = "-f";
+    private static final String FORMAT = "bestvideo*+bestaudio/best";
+    private static final String QUIET_OP = "--quiet";
+    private static final String OUT_PUT_OP = "-o";
+    private static final String ERROR = ".error";
     private final MinioService minioService;
     private final YoutubeExceptionHandler exceptionHandler;
     @Value("${yt-dlp.path}")
@@ -60,26 +66,35 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
 
     @Override
     public void download(String videoId) {
+        ImmutableList.Builder<String> builder = ImmutableList.<String>builder()
+                .add(ytDLP)
+                .add(FORMAT_OP)
+                .add(FORMAT)
+                .add(QUIET_OP)
+                .add(OUT_PUT_OP)
+                .add(OUT_PUT_DIR + videoId + VIDEO_EXT)
+                .add(YOUTUBE_VIDEO_URL_PREFIX + videoId);
+        List<String> args = builder.build();
+        log.info(String.join(" ", args));
         CompletableFuture.supplyAsync(() -> {
-                    ImmutableList.Builder<String> builder = ImmutableList.<String>builder()
-                            .add(ytDLP)
-                            .add(FORMAT_OP)
-                            .add(FORMAT)
-                            .add(QUIET_OP)
-                            .add(OUT_PUT_OP)
-                            .add(OUT_PUT)
-                            .add(YOUTUBE_VIDEO_URL_PREFIX + videoId);
-                    if (env.equals(DEV)) {
-                        builder.add(PROXY_OP)
-                            .add(PROXY_DEV);
-                    }
-                    List<String> args = builder.build();
-                    log.info(String.join(" ", args));
+                    Timer.Sample timer = Timer.start();
+                    Process process = null;
                     try {
-                        return minioService.upload(videoId, new ProcessBuilder(args).start());
-                    } catch (IOException e) {
-                        throw new ProcessException("start process fail by io exception", e);
+                        process = new ProcessBuilder(args).start();
+                        process.waitFor();
+                        if (process.exitValue() != 0) {
+                            FileCopyUtils.copy(FileCopyUtils.copyToByteArray(process.getErrorStream()), new File(videoId + ERROR));
+                            throw new ProcessException("process exit error");
+                        }
+                    } catch (IOException | InterruptedException e) {
+                        throw new ProcessException("yt-dlp process exception", e);
+                    } finally {
+                        assert process != null;
+                        process.destroy();
                     }
+                    timer.stop(Timer.builder("yt-dlp-dl")
+                            .register(Metrics.globalRegistry));
+                    return videoId;
                 }, DOWNLOAD_AND_UPLOAD_THREAD_POOL)
                 .whenComplete((result, e) -> {
                     // todo http call
@@ -87,6 +102,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                     if (e != null) {
                         throw new RuntimeException(e);
                     }
+                    minioService.upload(result);
                 }).exceptionally(e -> exceptionHandler.lastHandler(e).getData());
     }
 

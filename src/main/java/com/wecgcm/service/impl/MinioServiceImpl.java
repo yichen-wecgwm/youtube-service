@@ -1,22 +1,18 @@
 package com.wecgcm.service.impl;
 
-import com.wecgcm.exception.ProcessException;
 import com.wecgcm.exception.UploadException;
 import com.wecgcm.service.MinioService;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import io.minio.MinioClient;
 import io.minio.ObjectWriteResponse;
-import io.minio.PutObjectArgs;
+import io.minio.UploadObjectArgs;
 import io.minio.errors.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.FileCopyUtils;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
@@ -29,39 +25,32 @@ import java.security.NoSuchAlgorithmException;
 public class MinioServiceImpl implements MinioService {
     private static final String BUCKET_NAME = "videos";
     private static final String SLASH = "/";
-    private static final String VIDEO_EXT = ".webm";
+
     public static final String VIDEO_TYPE = "video/webm";
-    public static final String ERROR = ".error";
     private final MinioClient minioClient;
 
     @Override
-    public String upload(String videoId, Process process) {
-        try (InputStream inputStream = process.getInputStream()){
-            Timer.Sample timer = Timer.start();
-            ObjectWriteResponse objectWriteResponse = minioClient.putObject(
-                    PutObjectArgs
+    public String upload(String videoId) {
+        Timer.Sample timer = Timer.start();
+        try {
+            ObjectWriteResponse objectWriteResponse = minioClient.uploadObject(
+                    UploadObjectArgs
                             .builder()
                             .bucket(BUCKET_NAME)
-                            .object(videoId + SLASH + videoId + VIDEO_EXT)
-                            .stream(inputStream, -1, 10485760)
+                            .object(videoId + SLASH + videoId + YouTubeVideoServiceImpl.VIDEO_EXT)
+                            .filename(YouTubeVideoServiceImpl.OUT_PUT_DIR + videoId + YouTubeVideoServiceImpl.VIDEO_EXT)
                             .contentType(VIDEO_TYPE)
                             .build());
-            if (process.exitValue() != 0) {
-                FileCopyUtils.copy(FileCopyUtils.copyToByteArray(process.getErrorStream()), new File(videoId + ERROR));
-                throw new ProcessException("process exit error");
-            }
             if (objectWriteResponse == null) {
                 throw new UploadException("minio upload fail, resp is null");
             }
-            timer.stop(Timer.builder("yt-upload")
-                    .register(Metrics.globalRegistry));
-        } catch (ErrorResponseException | InsufficientDataException | XmlParserException | ServerException |
-                 NoSuchAlgorithmException | IOException | InvalidResponseException | InvalidKeyException |
-                 InternalException e) {
-            throw new RuntimeException(e);
-        }finally {
-            process.destroy();
+        } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
+                 InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
+                 XmlParserException e) {
+            throw new UploadException("minio upload exception", e);
         }
+        timer.stop(Timer.builder("minio-upload")
+                .register(Metrics.globalRegistry));
         return videoId;
     }
 
