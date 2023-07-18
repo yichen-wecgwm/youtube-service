@@ -1,8 +1,8 @@
 package com.wecgcm.service.impl;
 
 import com.wecgcm.exception.UploadException;
+import com.wecgcm.model.YTDownloadArg;
 import com.wecgcm.service.MinioService;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import io.minio.MinioClient;
@@ -29,20 +29,19 @@ import java.security.NoSuchAlgorithmException;
 public class MinioServiceImpl implements MinioService {
     private static final String BUCKET_NAME = "videos";
     private static final String SLASH = "/";
-
     public static final String VIDEO_TYPE = "video/webm";
     private final MinioClient minioClient;
 
     @Override
-    public String upload(String videoId) {
-        String filePath = YouTubeVideoServiceImpl.OUT_PUT_DIR + videoId + YouTubeVideoServiceImpl.VIDEO_EXT;
+    public void upload(String videoId) {
+        String filePath = YTDownloadArg.OUT_PUT_DIR + videoId + YTDownloadArg.VIDEO_EXT;
         Timer.Sample timer = Timer.start();
         try {
             ObjectWriteResponse objectWriteResponse = minioClient.uploadObject(
                     UploadObjectArgs
                             .builder()
                             .bucket(BUCKET_NAME)
-                            .object(videoId + SLASH + videoId + YouTubeVideoServiceImpl.VIDEO_EXT)
+                            .object(videoId + SLASH + videoId + YTDownloadArg.VIDEO_EXT)
                             .filename(filePath)
                             .contentType(VIDEO_TYPE)
                             .build());
@@ -54,18 +53,12 @@ public class MinioServiceImpl implements MinioService {
                  XmlParserException e) {
             throw new UploadException("minio upload exception", e);
         }finally {
-            boolean delete = new File(filePath).delete();
-            if (!delete) {
-                Counter.builder("delete-file-fail")
-                        .tag("path", filePath)
-                        .register(Metrics.globalRegistry)
-                        .increment();
-                log.warn("delete file fail, file path: {}", filePath);
-            }
+            //noinspection ResultOfMethodCallIgnored
+            new File(filePath).delete();
         }
         timer.stop(Timer.builder("minio-upload")
                 .register(Metrics.globalRegistry));
-        return videoId;
+        log.info("upload done, videoId: {}", videoId);
     }
 
 }
