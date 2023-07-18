@@ -70,17 +70,21 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                 .add(ytDLP)
                 .add(FORMAT_OP)
                 .add(FORMAT)
-                .add(QUIET_OP)
+                //.add(QUIET_OP)
                 .add(OUT_PUT_OP)
                 .add(OUT_PUT_DIR + videoId + VIDEO_EXT)
-                .add(YOUTUBE_VIDEO_URL_PREFIX + videoId);
+                .add(YOUTUBE_VIDEO_URL_PREFIX + videoId)
+                .add("&>")
+                .add("1.txt");
+
         List<String> args = builder.build();
         log.info(String.join(" ", args));
         CompletableFuture.supplyAsync(() -> {
                     Timer.Sample timer = Timer.start();
+                    ProcessBuilder processBuilder = new ProcessBuilder(args);
                     Process process = null;
                     try {
-                        process = new ProcessBuilder(args).start();
+                        process = processBuilder.start();
                         process.waitFor();
                         if (process.exitValue() != 0) {
                             FileCopyUtils.copy(FileCopyUtils.copyToByteArray(process.getErrorStream()), new File(videoId + ERROR));
@@ -117,5 +121,13 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     public List<String> search(String query) {
         return Collections.emptyList();
     }
+
+    /**
+     * wget https://github.com/biliup/biliup-rs/releases/download/v0.1.17/biliupR-v0.1.17-x86_64-linux.tar.xz
+     * apt-get update && apt-get install xz-utils
+     * tar -xf biliupR-v0.1.17-x86_64-linux.tar.xz
+     * ./biliup login
+     * ./biliup upload --copyright 2 --tid 71 --tag "SAKURA" --source "https://www.youtube.com/watch?v=85uATsLB19A" --line bda2 --limit 5 --title "real title123" 85uATsLB19A.webm &> 1.txt
+     */
 
 }
