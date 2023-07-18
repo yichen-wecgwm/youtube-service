@@ -13,4 +13,8 @@ public class ProcessException extends RuntimeException{
     public ProcessException(String msg, Throwable cause) {
         super(msg, cause);
     }
+
+    public ProcessException(Throwable cause) {
+        super(cause);
+    }
 }
