@@ -1,4 +1,4 @@
-package com.wecgcm.model.arg;
+package com.wecgcm.youtube.model.arg;
 
 import com.google.common.collect.ImmutableList;
 import lombok.extern.slf4j.Slf4j;

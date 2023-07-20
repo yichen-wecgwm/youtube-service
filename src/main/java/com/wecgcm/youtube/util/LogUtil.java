@@ -1,4 +1,4 @@
-package com.wecgcm.util;
+package com.wecgcm.youtube.util;
 
 import org.slf4j.LoggerFactory;
 

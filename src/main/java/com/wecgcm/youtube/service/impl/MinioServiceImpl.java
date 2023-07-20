@@ -1,8 +1,8 @@
-package com.wecgcm.service.impl;
+package com.wecgcm.youtube.service.impl;
 
-import com.wecgcm.exception.UploadException;
-import com.wecgcm.model.arg.MinIOUploadArg;
-import com.wecgcm.service.MinioService;
+import com.wecgcm.youtube.exception.UploadException;
+import com.wecgcm.youtube.model.arg.MinIOUploadArg;
+import com.wecgcm.youtube.service.MinioService;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import io.minio.MinioClient;

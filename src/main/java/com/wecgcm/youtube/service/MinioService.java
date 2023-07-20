@@ -1,4 +1,4 @@
-package com.wecgcm.service;
+package com.wecgcm.youtube.service;
 
 
 public interface MinioService {

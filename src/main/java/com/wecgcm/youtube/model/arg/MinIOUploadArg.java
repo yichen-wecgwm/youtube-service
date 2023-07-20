@@ -1,4 +1,4 @@
-package com.wecgcm.model.arg;
+package com.wecgcm.youtube.model.arg;
 
 import io.minio.UploadObjectArgs;
 import lombok.extern.slf4j.Slf4j;
