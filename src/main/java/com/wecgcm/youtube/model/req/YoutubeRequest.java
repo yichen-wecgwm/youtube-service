@@ -8,5 +8,5 @@ import lombok.Data;
  */
 @Data
 public class YoutubeRequest {
-    private String id;
+    private String videoId;
 }

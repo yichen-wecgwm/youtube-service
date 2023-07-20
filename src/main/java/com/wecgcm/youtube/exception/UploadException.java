@@ -13,4 +13,8 @@ public class UploadException extends RuntimeException{
     public UploadException(String msg, Throwable cause) {
         super(msg, cause);
     }
+
+    public UploadException(Throwable cause) {
+        super(cause);
+    }
 }

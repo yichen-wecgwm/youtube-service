@@ -11,9 +11,10 @@ import java.util.List;
  * @author ：wecgwm
  * @date ：2023/07/18 23:28
  */
+@SuppressWarnings("SpellCheckingInspection")
 @Slf4j
 @Component
-public class YTDownloadArg {
+public class YTDLPArg {
     private static final String YOUTUBE_VIDEO_URL_PREFIX = "https://www.youtube.com/watch?v=";
     private static final String OUT_PUT_OP = "-o";
     public static final String OUT_PUT_DIR = "videos/";

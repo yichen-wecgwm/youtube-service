@@ -35,10 +35,11 @@ public class MinioServiceImpl implements MinioService {
                 .recoverWith(e -> Try.failure(new UploadException("minio upload: open file exception", e)))
                 .mapTry(minioClient::uploadObject)
                 .recoverWith(e -> Try.failure(new UploadException("minio upload: upload exception", e)))
-                .filter(Objects::nonNull, () -> new UploadException("minio upload fail, resp is null"));
+                .filter(Objects::nonNull, () -> new UploadException("minio upload fail, resp is null"))
+                .getOrElseThrow(UploadException::new);
 
         //noinspection ResultOfMethodCallIgnored
-        new File(minIOUploadArg.getFilePath(videoId)).delete();
+        new File(minIOUploadArg.filePath(videoId)).delete();
         timer.stop(Timer.builder("minio-upload").register(Metrics.globalRegistry));
         log.info("upload done, videoId: {}", videoId);
     }

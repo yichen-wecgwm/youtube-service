@@ -14,7 +14,7 @@ public abstract class YoutubeController {
 
     @PostMapping("/download")
     public Response<String> download(@RequestBody YoutubeRequest request){
-        getYoutubeService().download(request.getId());
+        getYoutubeService().download(request.getVideoId());
         return Response.ok();
     }
 

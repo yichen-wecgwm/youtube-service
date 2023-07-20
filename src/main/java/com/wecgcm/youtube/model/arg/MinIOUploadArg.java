@@ -21,14 +21,14 @@ public class MinIOUploadArg {
         return UploadObjectArgs
                 .builder()
                 .bucket(BUCKET_NAME)
-                .object(videoId + SLASH + videoId + YTDownloadArg.VIDEO_EXT)
-                .filename(getFilePath(videoId))
+                .object(videoId + SLASH + videoId + YTDLPArg.VIDEO_EXT)
+                .filename(filePath(videoId))
                 .contentType(VIDEO_TYPE)
                 .build();
     }
 
-    public String getFilePath(String videoId){
-        return YTDownloadArg.OUT_PUT_DIR + videoId + YTDownloadArg.VIDEO_EXT;
+    public String filePath(String videoId){
+        return YTDLPArg.OUT_PUT_DIR + videoId + YTDLPArg.VIDEO_EXT;
     }
 
 }

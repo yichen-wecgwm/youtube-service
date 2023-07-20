@@ -1,8 +1,7 @@
 package com.wecgcm.youtube.exception.handler;
 
 import com.wecgcm.youtube.model.resp.Response;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Metrics;
+import com.wecgcm.youtube.util.LogUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,15 +16,8 @@ public class YoutubeExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public Response<String> lastHandler(Throwable e){
-        recordOnException(e);
+        LogUtil.recordOnExceptionHandler(null, e);
         return Response.from(e);
     }
 
-    private void recordOnException(Throwable e){
-        log.error("msg:{}", e.getMessage(), e);
-        Counter.builder("exception.handler")
-                .tag("exception", e.getClass().getSimpleName())
-                .register(Metrics.globalRegistry)
-                .increment();
-    }
 }
