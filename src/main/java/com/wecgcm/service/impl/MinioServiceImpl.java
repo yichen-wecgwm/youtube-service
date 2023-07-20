@@ -1,13 +1,11 @@
 package com.wecgcm.service.impl;
 
 import com.wecgcm.exception.UploadException;
-import com.wecgcm.model.YTDownloadArg;
+import com.wecgcm.model.arg.MinIOUploadArg;
 import com.wecgcm.service.MinioService;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import io.minio.MinioClient;
-import io.minio.ObjectWriteResponse;
-import io.minio.UploadObjectArgs;
 import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,33 +23,23 @@ import java.util.Objects;
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Service
 public class MinioServiceImpl implements MinioService {
-    private static final String BUCKET_NAME = "videos";
-    private static final String SLASH = "/";
-    private static final String VIDEO_TYPE = "video/webm";
+    private final MinIOUploadArg minIOUploadArg;
     private final MinioClient minioClient;
 
     @Override
     public void uploadVideo(String videoId) {
-        String filePath = YTDownloadArg.OUT_PUT_DIR + videoId + YTDownloadArg.VIDEO_EXT;
         Timer.Sample timer = Timer.start();
 
-        ObjectWriteResponse objectWriteResponse = Try.of(() ->
-            minioClient.uploadObject(
-                    UploadObjectArgs
-                            .builder()
-                            .bucket(BUCKET_NAME)
-                            .object(videoId + SLASH + videoId + YTDownloadArg.VIDEO_EXT)
-                            .filename(filePath)
-                            .contentType(VIDEO_TYPE)
-                            .build())
-        ).getOrElseThrow(e -> new UploadException("minio upload exception", e));
-        Try.success(objectWriteResponse)
+        Try.success(videoId)
+                .mapTry(minIOUploadArg::build)
+                .recoverWith(e -> Try.failure(new UploadException("minio upload: open file exception", e)))
+                .mapTry(minioClient::uploadObject)
+                .recoverWith(e -> Try.failure(new UploadException("minio upload: upload exception", e)))
                 .filter(Objects::nonNull, () -> new UploadException("minio upload fail, resp is null"));
 
         //noinspection ResultOfMethodCallIgnored
-        new File(filePath).delete();
-        timer.stop(Timer.builder("minio-upload")
-                .register(Metrics.globalRegistry));
+        new File(minIOUploadArg.getFilePath(videoId)).delete();
+        timer.stop(Timer.builder("minio-upload").register(Metrics.globalRegistry));
         log.info("upload done, videoId: {}", videoId);
     }
 

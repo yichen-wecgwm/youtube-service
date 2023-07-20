@@ -3,7 +3,7 @@ package com.wecgcm.service.impl;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.wecgcm.exception.ProcessException;
 import com.wecgcm.exception.handler.YoutubeExceptionHandler;
-import com.wecgcm.model.YTDownloadArg;
+import com.wecgcm.model.arg.YTDownloadArg;
 import com.wecgcm.service.MinioService;
 import com.wecgcm.service.YouTubeVideoService;
 import com.wecgcm.util.LogUtil;
