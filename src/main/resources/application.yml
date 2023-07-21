@@ -31,3 +31,10 @@ minio:
   credentials:
     accessKey: ${MINIO_ACCESS_KEY}
     secretKey: ${MINIO_SECRET_KEY}
+
+yt:
+  channel-id: ${YT_CHANNEL_ID:1,2}
+  schedule:
+    enable: ${YT_SCHEDULE_ENABLE:false}
+  scan:
+    cron: ${YT_SCAN_CRON:0 0/5 * * * ?}

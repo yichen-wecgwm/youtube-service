@@ -1,16 +1,15 @@
 package com.wecgcm.youtube.controller;
 
+import com.wecgcm.youtube.model.req.YoutubeVideoRequest;
 import com.wecgcm.youtube.model.resp.Response;
 import com.wecgcm.youtube.service.YouTubeVideoService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * @author ：wecgwm
@@ -20,11 +19,12 @@ import java.util.List;
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 @RestController
 @RequestMapping("${spring.application.name}/video")
-public class YoutubeVideoController extends YoutubeController {
-    private final YouTubeVideoService youtubeService;
+public class YoutubeVideoController {
+    private final YouTubeVideoService youTubeVideoService;
 
-    @GetMapping("/search")
-    public Response<List<String>> search(@RequestParam String query) {
-        return Response.from(youtubeService.search(query));
+    @PostMapping("/download")
+    public Response<String> download(@RequestBody YoutubeVideoRequest request){
+        youTubeVideoService.download(request.getVideoId());
+        return Response.ok();
     }
 }

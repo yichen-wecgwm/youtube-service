@@ -12,7 +12,7 @@ import java.io.IOException;
  */
 @Slf4j
 @Component
-public class MinIOUploadArg {
+public class MinIOUploadVideoArg {
     private static final String BUCKET_NAME = "videos";
     private static final String SLASH = "/";
     private static final String VIDEO_TYPE = "video/webm";

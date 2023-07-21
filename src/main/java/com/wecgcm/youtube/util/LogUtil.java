@@ -9,6 +9,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 /**
  * @author ：wecgwm
@@ -18,15 +20,22 @@ import java.io.InputStreamReader;
 public class LogUtil {
     public static final String EMPTY = "";
 
-    public static void error(InputStream stream, Class<?> clazz){
-        try(BufferedReader reader = new BufferedReader(new InputStreamReader(stream))){
+    public static void error(InputStream stream, Class<?> clazz) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
             reader.lines().forEach(s -> LoggerFactory.getLogger(clazz).error(s));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static void recordOnExceptionHandler(Thread t, Throwable e){
+    public static <T> Function<Throwable, T> completionExceptionally(Class<T> clazz) {
+        return e -> {
+            LogUtil.recordOnExceptionHandler(Thread.currentThread(), e);
+            return new CompletableFuture<T>().resultNow();
+        };
+    }
+
+    public static void recordOnExceptionHandler(Thread t, Throwable e) {
         log.error("thread:{}, msg:{}", t == null ? EMPTY : t, e.getMessage(), e);
         Counter.Builder exception = Counter.builder("exception.handler")
                 .tag("exception", e.getClass().getSimpleName());

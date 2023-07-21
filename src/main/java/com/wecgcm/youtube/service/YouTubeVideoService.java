@@ -1,20 +1,27 @@
 package com.wecgcm.youtube.service;
 
-import java.util.List;
+import com.wecgcm.youtube.model.dto.ChannelDto;
+import com.wecgcm.youtube.model.dto.VideoListDto;
+
+import java.util.concurrent.CompletionStage;
 
 /**
  * @author ：wecgwm
  * @date ：2023/07/10 17:15
  */
 @SuppressWarnings("SpellCheckingInspection")
-public interface YouTubeVideoService extends YoutubeService{
+public interface YouTubeVideoService {
+
+    void scanAsync();
 
     /**
      * Search some videoId that have not been downloaded
-     *
-     * @param channel channel e.g. @15ya.fullmoon in www.youtube.com/@15ya.fullmoon/videos
-     * @return videoId list
      */
-    List<String> search(String channel);
+    VideoListDto search(ChannelDto channel);
+
+    /**
+     * @param videoId e.g. JpTqSzm4JOk in www.youtube.com/watch?v=JpTqSzm4JOk
+     */
+    CompletionStage<String> download(String videoId);
 
 }
