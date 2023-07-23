@@ -12,15 +12,12 @@ import java.io.IOException;
  */
 @Slf4j
 @Component
-public class MinIOUploadVideoArg {
-    private static final String BUCKET_NAME = "videos";
-    private static final String SLASH = "/";
-    private static final String VIDEO_TYPE = "video/webm";
+public class MinIOUploadVideoArg extends MinioArg{
 
     public UploadObjectArgs build(String videoId) throws IOException {
         return UploadObjectArgs
                 .builder()
-                .bucket(BUCKET_NAME)
+                .bucket(VIDEO_BUCKET_NAME)
                 .object(videoId + SLASH + videoId + YTDLPArg.VIDEO_EXT)
                 .filename(filePath(videoId))
                 .contentType(VIDEO_TYPE)

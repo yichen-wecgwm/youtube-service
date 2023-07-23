@@ -1,7 +1,7 @@
 package com.wecgcm.youtube.model.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.experimental.Accessors;
 
 import java.util.List;
 
@@ -9,7 +9,7 @@ import java.util.List;
  * @author ：wecgwm
  * @date ：2023/07/21 18:55
  */
-@Accessors(chain = true)
+@AllArgsConstructor
 @Data
 public class VideoListDto {
     private String titlePrefix;

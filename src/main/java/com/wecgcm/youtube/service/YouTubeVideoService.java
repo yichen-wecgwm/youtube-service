@@ -1,7 +1,6 @@
 package com.wecgcm.youtube.service;
 
-import com.wecgcm.youtube.model.dto.ChannelDto;
-import com.wecgcm.youtube.model.dto.VideoListDto;
+import io.minio.ObjectWriteResponse;
 
 import java.util.concurrent.CompletionStage;
 
@@ -15,13 +14,8 @@ public interface YouTubeVideoService {
     void scanAsync();
 
     /**
-     * Search some videoId that have not been downloaded
-     */
-    VideoListDto search(ChannelDto channel);
-
-    /**
      * @param videoId e.g. JpTqSzm4JOk in www.youtube.com/watch?v=JpTqSzm4JOk
      */
-    CompletionStage<String> download(String videoId);
+    CompletionStage<ObjectWriteResponse> download(String videoId);
 
 }
