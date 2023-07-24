@@ -13,7 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -81,7 +83,7 @@ public class YoutubeServiceTest {
 
     @Test
     public void getUploadDateTest() {
-        LocalDateTime uploadDate = ytdlpService.getUploadDate(videoId);
+        LocalDateTime uploadDate = LocalDate.parse(ytdlpService.getInfo(videoId, "upload_date"), DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
         System.out.println(uploadDate);
     }
 

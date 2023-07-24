@@ -69,11 +69,10 @@ public class YTDLPServiceImpl implements YTDLPService {
     }
 
     @Override
-    public LocalDateTime getUploadDate(String videoId) {
-        List<String> args = ytdlpVideoPrintArg.build(videoId, UPLOAD_DATE);
-        String uploadDate = processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.getInputStream()), "print-date")
+    public String getInfo(String videoId, String target) {
+        List<String> args = ytdlpVideoPrintArg.build(videoId, target);
+        return processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.getInputStream()), "get-" + target)
                 .get(0);
-        return LocalDate.parse(uploadDate, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
     }
 
     private <T> T processTemplate(Supplier<ProcessBuilder> processBuilderSupplier, CheckedFunction1<Process, T> function, String key) {
@@ -101,7 +100,7 @@ public class YTDLPServiceImpl implements YTDLPService {
 
     private List<VideoDto> takeVideoId(List<String> videoIdList, String titlePrefix) {
         List<VideoDto> ret = videoIdList.stream()
-                .map(id -> new VideoDto(id, getUploadDate(id), titlePrefix))
+                .map(id -> new VideoDto(id, LocalDate.parse(getInfo(id, UPLOAD_DATE), DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay(), titlePrefix))
                 .filter(videoDto -> {
                     if (videoDto.getUploadDate().plusDays(filterUploadDate).isBefore(LocalDateTime.now())) {
                         return false;

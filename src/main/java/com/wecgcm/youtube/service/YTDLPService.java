@@ -3,7 +3,6 @@ package com.wecgcm.youtube.service;
 import com.wecgcm.youtube.model.dto.ChannelDto;
 import com.wecgcm.youtube.model.dto.VideoDto;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -22,5 +21,5 @@ public interface YTDLPService {
      */
     String download(String videoId);
 
-    LocalDateTime getUploadDate(String videoId);
+    String getInfo(String videoId, String target);
 }
