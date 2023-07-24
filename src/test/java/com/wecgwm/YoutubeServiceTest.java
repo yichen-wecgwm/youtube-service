@@ -55,7 +55,7 @@ public class YoutubeServiceTest {
 
     @Test
     public void getChannelInfoTest(){
-        log.info(minioService.readJson(MinioArg.CHANNEL_BUCKET_NAME, "1", ChannelDto.class).toString());
+        log.info(minioService.readJson(MinioArg.CHANNEL_BUCKET_NAME, "1" + MinioArg.JSON_EXT, ChannelDto.class).toString());
     }
 
     @Test
@@ -63,7 +63,7 @@ public class YoutubeServiceTest {
         List.of(1).forEach(channelId ->{
                     try {
                         CompletableFuture.completedStage(channelId)
-                                        .thenApply(cId -> minioService.readJson(MinioArg.CHANNEL_BUCKET_NAME, String.valueOf(cId), ChannelDto.class))
+                                        .thenApply(cId -> minioService.readJson(MinioArg.CHANNEL_BUCKET_NAME, String.valueOf(cId) + MinioArg.JSON_EXT, ChannelDto.class))
                                         .thenApply(ytdlpService::search).toCompletableFuture()
                                         .get();
                     } catch (InterruptedException | ExecutionException e) {

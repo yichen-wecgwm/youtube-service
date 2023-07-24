@@ -22,7 +22,6 @@ public class YTDLPDownloadArg extends YTDLPArg{
                 .add(filePath(videoId))
                 .add(VIDEO_URL_PREFIX + videoId)
                 .build();
-        log.info(String.join(" ", ret));
         return ret;
     }
 

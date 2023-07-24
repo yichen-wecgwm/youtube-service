@@ -13,6 +13,7 @@ import com.wecgcm.youtube.util.LogUtil;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import io.minio.StatObjectResponse;
+import io.vavr.CheckedFunction1;
 import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 
@@ -55,99 +57,71 @@ public class YTDLPServiceImpl implements YTDLPService {
     @Override
     public List<VideoDto> search(ChannelDto channel) {
         List<String> args = ytdlpSearchArg.build(channel.getUrl());
-        Timer.Sample timer = Timer.start();
-
-        ProcessBuilder processBuilder = new ProcessBuilder(args);
-        Process process = Try.of(processBuilder::start)
-                .getOrElseThrow(YTDLPException::new);
-        List<String> videoIdList = Try.of(process::getInputStream)
-                .mapTry(this::readPrint)
-                .andThenTry(process::waitFor)
-                .filter(__ -> process.exitValue() == PROCESS_NORMAL_TERMINATION, p -> {
-                    LogUtil.error(process.getErrorStream(), this.getClass());
-                    return new YTDLPException("yt-dlp search process exit error");
-                })
-                .andFinally(process::destroy)
-                .getOrElseThrow(YTDLPException::new);
-
-        timer.stop(Timer.builder("yt-dlp-search")
-                .register(Metrics.globalRegistry));
-        log.info("search done, thread:{}, channel: {}, videoIdList:{}", Thread.currentThread(), channel, videoIdList);
+        List<String> videoIdList = processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.getInputStream()), "search");
         return takeVideoId(videoIdList, channel.getTitlePrefix());
     }
 
     @Override
     public String download(String videoId) {
         List<String> args = ytdlpDownloadArg.build(videoId);
-        Timer.Sample timer = Timer.start();
-
-        ProcessBuilder processBuilder = new ProcessBuilder(args)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD);
-        Process process = Try.of(processBuilder::start)
-                .getOrElseThrow(YTDLPException::new);
-        Try.success(process)
-                .andThenTry(Process::waitFor)
-                .filter(p -> p.exitValue() == 0, p -> {
-                    LogUtil.error(process.getErrorStream(), this.getClass());
-                    return new YTDLPException("yt-dlp download process exit error");
-                })
-                .andFinally(process::destroy)
-                .getOrElseThrow(YTDLPException::new);
-
-        timer.stop(Timer.builder("yt-dlp-dl")
-                .register(Metrics.globalRegistry));
-        log.info("download done, thread:{}, videoId:{}", Thread.currentThread(), videoId);
+        processTemplate(() -> new ProcessBuilder(args).redirectOutput(ProcessBuilder.Redirect.DISCARD), __ -> __, "download");
         return YTDLPDownloadArg.filePath(videoId);
     }
 
     @Override
     public LocalDateTime getUploadDate(String videoId) {
         List<String> args = ytdlpVideoPrintArg.build(videoId, UPLOAD_DATE);
-
-        Timer.Sample timer = Timer.start();
-
-        ProcessBuilder processBuilder = new ProcessBuilder(args);
-        Process process = Try.of(processBuilder::start)
-                .getOrElseThrow(YTDLPException::new);
-        String uploadDate = Try.of(process::getInputStream)
-                .mapTry(this::readPrint)
-                .andThenTry(process::waitFor)
-                .filter(__ -> process.exitValue() == PROCESS_NORMAL_TERMINATION, p -> {
-                    LogUtil.error(process.getErrorStream(), this.getClass());
-                    return new YTDLPException("yt-dlp print process exit error");
-                })
-                .andFinally(process::destroy)
-                .getOrElseThrow(YTDLPException::new)
+        String uploadDate = processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.getInputStream()), "print-date")
                 .get(0);
-
-        timer.stop(Timer.builder("yt-dlp-print")
-                .tag("print", "upload-date")
-                .register(Metrics.globalRegistry));
-        log.info("print upload date done, thread:{}, videoId:{}, uploadDate:{}", Thread.currentThread(), videoId, uploadDate);
         return LocalDate.parse(uploadDate, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
     }
 
+    private <T> T processTemplate(Supplier<ProcessBuilder> processBuilderSupplier, CheckedFunction1<Process, T> function, String key) {
+        Timer.Sample timer = Timer.start();
+
+        ProcessBuilder processBuilder = processBuilderSupplier.get();
+        Process process = Try.of(processBuilder::start)
+                .getOrElseThrow(YTDLPException::new);
+
+        T ret = Try.success(process)
+                .mapTry(function)
+                .andThenTry(process::waitFor)
+                .filter(__ -> process.exitValue() == PROCESS_NORMAL_TERMINATION, p -> {
+                    LogUtil.error(process.getErrorStream(), this.getClass());
+                    return new YTDLPException("yt-dlp " + key + " process exit error");
+                })
+                .andFinally(process::destroy)
+                .getOrElseThrow(YTDLPException::new);
+
+        timer.stop(Timer.builder("yt-dlp-" + key)
+                .register(Metrics.globalRegistry));
+        log.info("{} command:{}, thread:{}, ret:{}", key, processBuilder.command(), Thread.currentThread(), ret);
+        return ret;
+    }
+
     private List<VideoDto> takeVideoId(List<String> videoIdList, String titlePrefix) {
-        List<VideoDto> ret = videoIdList.stream().map(id -> new VideoDto(id, getUploadDate(id), titlePrefix)).filter(videoDto -> {
-            if (videoDto.getUploadDate().plusDays(filterUploadDate).isBefore(LocalDateTime.now())) {
-                return false;
-            }
-            String videoId = videoDto.getVideoId();
-            StatObjectResponse archive = minioService.statObject(MinioArg.VIDEO_BUCKET_NAME, videoId + MinioArg.SLASH + ARCHIVE);
-            if (archive != null) {
-                return false;
-            }
-            StatObjectResponse lock = minioService.statObject(MinioArg.VIDEO_BUCKET_NAME, videoId + MinioArg.SLASH + LOCK);
-            if (lock != null && lock.lastModified().plusMinutes(lockTimeOutMinute).isAfter(ZonedDateTime.now())) {
-                return false;
-            }
-            return minioService.tryLock(videoId, Thread.currentThread());
-        }).toList();
+        List<VideoDto> ret = videoIdList.stream()
+                .map(id -> new VideoDto(id, getUploadDate(id), titlePrefix))
+                .filter(videoDto -> {
+                    if (videoDto.getUploadDate().plusDays(filterUploadDate).isBefore(LocalDateTime.now())) {
+                        return false;
+                    }
+                    String videoId = videoDto.getVideoId();
+                    StatObjectResponse archive = minioService.statObject(MinioArg.VIDEO_BUCKET_NAME, videoId + MinioArg.SLASH + ARCHIVE);
+                    if (archive != null) {
+                        return false;
+                    }
+                    StatObjectResponse lock = minioService.statObject(MinioArg.VIDEO_BUCKET_NAME, videoId + MinioArg.SLASH + LOCK);
+                    if (lock != null && lock.lastModified().plusMinutes(lockTimeOutMinute).isAfter(ZonedDateTime.now())) {
+                        return false;
+                    }
+                    return minioService.tryLock(videoId, Thread.currentThread());
+                }).toList();
         log.info("take done, thread:{}, VideoList:{}", Thread.currentThread(), ret);
         return ret;
     }
 
-    private  List<String> readPrint(InputStream inputStream) {
+    private List<String> readPrint(InputStream inputStream) {
         BufferedReader reader = Try.success(inputStream)
                 .map(InputStreamReader::new)
                 .map(BufferedReader::new)

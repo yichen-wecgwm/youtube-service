@@ -36,7 +36,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
 
     private final ThreadPoolExecutor SCAN = new ThreadPoolExecutor(2, 5, 2, TimeUnit.MINUTES,
             new ArrayBlockingQueue<>(5), new ThreadFactoryBuilder().setNameFormat("yt-scan-%d").build());
-    private final ThreadPoolExecutor DOWNLOAD_AND_UPLOAD = new ThreadPoolExecutor(2, 10, 10, TimeUnit.MINUTES,
+    private final ThreadPoolExecutor DOWNLOAD_AND_UPLOAD = new ThreadPoolExecutor(2, 20, 10, TimeUnit.MINUTES,
             new ArrayBlockingQueue<>(5), new ThreadFactoryBuilder().setNameFormat("yt-dl-up-%d").build());
 
     {
@@ -52,8 +52,10 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                         .thenApply(ytdlpService::search)
                         .thenAccept(videoList -> {
                             videoList.forEach(video -> {
-                                CompletableFuture.completedStage(video.getVideoId())
-                                        .thenAcceptAsync(videoId -> minioService.put(MinioArg.VIDEO_BUCKET_NAME, videoId + MinioArg.SLASH + TITLE, video.getTitlePrefix() + video.getUploadDate().format(DateTimeFormatter.ofPattern("MM-dd"))), SCAN)
+                                CompletableFuture
+                                        .runAsync(() -> minioService.put(MinioArg.VIDEO_BUCKET_NAME,
+                                                video.getVideoId() + MinioArg.SLASH + TITLE,
+                                                video.getTitlePrefix() + video.getUploadDate().format(DateTimeFormatter.ofPattern("MM-dd"))), SCAN)
                                         .runAfterBothAsync(this.download(video.getVideoId()), () -> uploadToBilibili(video.getVideoId()), DOWNLOAD_AND_UPLOAD)
                                         .exceptionally(LogUtil.completionExceptionally(Void.class));
                             });

@@ -28,7 +28,6 @@ public class YTDLPSearchArg extends YTDLPArg{
                 .add(FLAT_PLAYLIST)
                 .add(channelUrl)
                 .build();
-        log.info(String.join(" ", ret));
         return ret;
     }
 

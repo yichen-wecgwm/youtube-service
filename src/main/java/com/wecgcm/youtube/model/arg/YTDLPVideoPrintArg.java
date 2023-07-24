@@ -15,15 +15,14 @@ import java.util.List;
 @Component
 public class YTDLPVideoPrintArg extends YTDLPArg{
 
-    public List<String> build(String videoUrl, String printItem) {
+    public List<String> build(String videoId, String printItem) {
         List<String> ret = ImmutableList.<String>builder()
                 .add(ytDLP)
                 .add(FLAT_PLAYLIST)
                 .add(PRINT_OP)
                 .add(printItem)
-                .add(videoUrl)
+                .add(VIDEO_URL_PREFIX + videoId)
                 .build();
-        log.info(String.join(" ", ret));
         return ret;
     }
 
