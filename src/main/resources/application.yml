@@ -40,3 +40,6 @@ yt:
     cron: ${YT_SCAN_CRON:0 0/5 * * * ?}
   filter-upload-date: ${YT_FILTER_UPLOAD_DATE:2}
   lock-time-out-minute: ${YT_LOCK_TIME_OUT_MINUTE:30}
+
+bilibili-service:
+  url: ${BILIBILI_SERVICE_URL:http://127.0.0.1:7002/bilibili-service}

@@ -5,22 +5,24 @@ import com.wecgcm.youtube.model.arg.MinioArg;
 import com.wecgcm.youtube.model.dto.ChannelDto;
 import com.wecgcm.youtube.service.MinioService;
 import com.wecgcm.youtube.service.YTDLPService;
-import com.wecgcm.youtube.service.YouTubeVideoService;
+import com.wecgcm.youtube.service.impl.YouTubeVideoServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.util.ReflectionUtils;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.IntStream;
 
 /**
  * @author ：wecgwm
@@ -30,14 +32,14 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor(onConstructor_= @Autowired)
 @SpringBootTest(classes = YoutubeServiceApplication.class)
 public class YoutubeServiceTest {
-    private final YouTubeVideoService youTubeVideoService;
+    private final YouTubeVideoServiceImpl youTubeVideoServiceImpl;
     private final YTDLPService ytdlpService;
     private final MinioService minioService;
 
     private static final String videoId = "LsrJNUT0eTk";
     @Test
     public void scanAsyncTest(){
-        List<CompletableFuture<Void>> completableFutures = youTubeVideoService.scanAsync();
+        List<CompletableFuture<Void>> completableFutures = youTubeVideoServiceImpl.scanAsync();
         while (true) {
             if (completableFutures.stream().allMatch(CompletableFuture::isDone)) {
                 break;
@@ -47,7 +49,7 @@ public class YoutubeServiceTest {
 
     @Test
     public void downloadTest() throws InterruptedException, ExecutionException {
-        youTubeVideoService.download(videoId).toCompletableFuture().get();
+        youTubeVideoServiceImpl.download(videoId).toCompletableFuture().get();
     }
 
     @Test
@@ -88,14 +90,11 @@ public class YoutubeServiceTest {
     }
 
     @Test
-    public void concurrentUploadTest() throws InterruptedException {
-        IntStream.range(0, 10).forEach(i -> {
-            new Thread(() -> {
-                //minioService.put("LsrJNUT0eTk", String.valueOf(i));
-            }, String.valueOf(i)).start();
-        });
-        log.info("123");
-        Thread.sleep(Duration.of(30, ChronoUnit.HOURS));
+    public void bilibiliUploadTest() throws InterruptedException {
+        Method uploadToBilibili = ReflectionUtils.findMethod(YouTubeVideoServiceImpl.class, "uploadToBilibili", String.class);
+        Objects.requireNonNull(uploadToBilibili).setAccessible(true);
+        ReflectionUtils.invokeMethod(uploadToBilibili, youTubeVideoServiceImpl, videoId);
+        Thread.sleep(Duration.of(30, ChronoUnit.SECONDS));
     }
 
 }

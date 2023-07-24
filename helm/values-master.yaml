@@ -61,6 +61,11 @@ env:
       configMapKeyRef:
         name: java-config
         key: YT_LOCK_TIME_OUT_MINUTE
+  - name: BILIBILI_SERVICE_URL
+    valueFrom:
+      configMapKeyRef:
+        name: java-config
+        key: BILIBILI_SERVICE_URL
 
 #envFrom:
 #  - secretRef:
