@@ -10,8 +10,10 @@ import org.springframework.beans.factory.annotation.Value;
 public class YTDLPArg {
     static final String VIDEO_URL_PREFIX = "https://www.youtube.com/watch?v=";
     static final String OUT_PUT_OP = "-o";
-    static final String OUT_PUT_DIR = "videos/";
-    static final String VIDEO_EXT = ".webm";
+    static final String PRINT_OP = "--print";
+    static final String FLAT_PLAYLIST = "--flat-playlist";
+    public static final String OUT_PUT_DIR = "videos/";
+    public static final String VIDEO_EXT = ".webm";
     @Value("${yt-dlp.path}")
     String ytDLP;
 }

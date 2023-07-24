@@ -3,7 +3,7 @@ package com.wecgcm.youtube.model.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 /**
  * @author ：wecgwm
@@ -11,7 +11,8 @@ import java.util.List;
  */
 @AllArgsConstructor
 @Data
-public class VideoListDto {
+public class VideoDto {
+    private String videoId;
+    private LocalDateTime uploadDate;
     private String titlePrefix;
-    private List<String> videoIdList;
 }

@@ -1,17 +1,17 @@
 package com.wecgcm.youtube.service;
 
-
-import com.wecgcm.youtube.model.dto.ChannelDto;
 import io.minio.ObjectWriteResponse;
+import io.minio.StatObjectResponse;
 
 public interface MinioService {
 
-    /**
-     * @param videoId e.g. JpTqSzm4JOk in www.youtube.com/watch?v=JpTqSzm4JOk
-     */
-    ObjectWriteResponse uploadVideo(String videoId);
+    ObjectWriteResponse upload(String bucket, String object, String fileName, String contentType);
 
-    ChannelDto getChannelInfo(int channelId);
+    ObjectWriteResponse put(String bucket, String object, String text);
 
-    ObjectWriteResponse uploadTitle(String videoId, String titlePrefix);
+    StatObjectResponse statObject(String bucket, String object);
+
+    <T> T readJson(String bucket, String object, Class<T> clazz);
+
+    boolean tryLock(String videoId, Thread thread);
 }

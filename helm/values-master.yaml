@@ -51,6 +51,16 @@ env:
       configMapKeyRef:
         name: java-config
         key: YT_SCAN_CRON
+  - name: YT_FILTER_UPLOAD_DATE
+    valueFrom:
+      configMapKeyRef:
+        name: java-config
+        key: YT_FILTER_UPLOAD_DATE
+  - name: YT_LOCK_TIME_OUT_MINUTE
+    valueFrom:
+      configMapKeyRef:
+        name: java-config
+        key: YT_LOCK_TIME_OUT_MINUTE
 
 #envFrom:
 #  - secretRef:

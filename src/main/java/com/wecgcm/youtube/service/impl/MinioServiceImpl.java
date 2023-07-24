@@ -2,15 +2,11 @@ package com.wecgcm.youtube.service.impl;
 
 import com.wecgcm.youtube.config.ObjectMapperSingleton;
 import com.wecgcm.youtube.exception.MinioException;
-import com.wecgcm.youtube.model.arg.MinIOGetChannelArg;
-import com.wecgcm.youtube.model.arg.MinIOPutVideoArg;
-import com.wecgcm.youtube.model.arg.MinIOUploadVideoArg;
-import com.wecgcm.youtube.model.dto.ChannelDto;
 import com.wecgcm.youtube.service.MinioService;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
-import io.minio.MinioClient;
-import io.minio.ObjectWriteResponse;
+import io.minio.*;
+import io.minio.errors.ErrorResponseException;
 import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
-import java.time.LocalDate;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -31,16 +26,19 @@ import java.util.stream.Collectors;
 @Service
 public class MinioServiceImpl implements MinioService {
     private final MinioClient minioClient;
-    private final MinIOUploadVideoArg minIOUploadVideoArg;
-    private final MinIOPutVideoArg minIOPutVideoArg;
-    private final MinIOGetChannelArg minIOGetChannelArg;
 
     @Override
-    public ObjectWriteResponse uploadVideo(String videoId) {
+    public ObjectWriteResponse upload(String bucket, String object, String fileName, String contentType) {
         Timer.Sample timer = Timer.start();
 
-        ObjectWriteResponse resp = Try.success(videoId)
-                .mapTry(minIOUploadVideoArg::build)
+        ObjectWriteResponse resp = Try.of(() -> UploadObjectArgs
+                        .builder()
+                        .bucket(bucket)
+                        .object(object)
+                        .filename(fileName)
+                        .contentType(contentType)
+                        .build()
+                )
                 .recoverWith(e -> Try.failure(new MinioException("minio upload: open file exception", e)))
                 .mapTry(minioClient::uploadObject)
                 .recoverWith(e -> Try.failure(new MinioException("minio upload: upload exception", e)))
@@ -48,42 +46,71 @@ public class MinioServiceImpl implements MinioService {
                 .get();
 
         //noinspection ResultOfMethodCallIgnored
-        new File(minIOUploadVideoArg.filePath(videoId)).delete();
+        new File(fileName).delete();
         timer.stop(Timer.builder("minio-upload").register(Metrics.globalRegistry));
-        log.info("upload done, thread:{}, videoId: {}, eTag:{}, versionId:{}, object:{}", Thread.currentThread(), videoId, resp.etag(), resp.versionId(), resp.object());
+        log.info("upload done, thread:{}, bucket: {}, object:{}, fileName:{}, contentType:{}, eTag:{}, resp:{}", Thread.currentThread(), bucket, object, fileName, contentType, resp.etag(), resp.object());
         return resp;
     }
 
     @Override
-    public ChannelDto getChannelInfo(int channelId) {
-        InputStream resp = Try.success(channelId)
-                .map(minIOGetChannelArg::build)
+    public ObjectWriteResponse put(String bucket, String object, String text) {
+        PipedOutputStream pipedOutputStream = new PipedOutputStream();
+        PipedInputStream pipedInputStream = Try.success(pipedOutputStream)
+                .mapTry(PipedInputStream::new)
+                .getOrElseThrow(MinioException::new);
+        Try.of(() -> new BufferedWriter(new OutputStreamWriter(pipedOutputStream)))
+                .andThenTry(bufferedWriter -> bufferedWriter.write(text))
+                .andThenTry(BufferedWriter::flush)
+                .andThenTry(BufferedWriter::close)
+                .getOrElseThrow(MinioException::new);
+        return Try.of(() -> PutObjectArgs
+                        .builder()
+                        .bucket(bucket)
+                        .object(object)
+                        .stream(pipedInputStream, -1, 10485760)
+                        .build())
+                .mapTry(minioClient::putObject)
+                .andThenTry(resp -> log.info("put done, thread:{}, bucket: {}, object:{}, text:{}, eTag:{}, resp:{}", Thread.currentThread(), bucket, object, text, resp.etag(), resp.object()))
+                .getOrElseThrow(MinioException::new);
+    }
+
+    @Override
+    public StatObjectResponse statObject(String bucket, String object) {
+        return Try.of(() -> minioClient.statObject(StatObjectArgs.builder().bucket(bucket).object(object).build()))
+                .recoverWith(ErrorResponseException.class, e -> {
+                    if ("NoSuchKey" .equals(e.errorResponse().code())) {
+                        // Not found
+                        return Try.success(null);
+                    }
+                    return Try.failure(new MinioException(e));
+                })
+                .getOrElseThrow(MinioException::new);
+    }
+
+    @Override
+    public <T> T readJson(String bucket, String object, Class<T> clazz) {
+        InputStream resp = Try.of(() -> GetObjectArgs
+                        .builder()
+                        .bucket(bucket)
+                        .object(object)
+                        .build()
+                )
                 .mapTry(minioClient::getObject)
                 .getOrElseThrow(MinioException::new);
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(resp));
         return Try.success(bufferedReader)
                 .mapTry(BufferedReader::lines)
                 .mapTry(lines -> lines.collect(Collectors.joining()))
-                .mapTry(json -> ObjectMapperSingleton.INSTANCE.readValue(json, ChannelDto.class))
+                .mapTry(json -> ObjectMapperSingleton.INSTANCE.readValue(json, clazz))
+                .andThenTry(ret -> log.info("read json done, thread:{}, bucket: {}, object:{}, content:{}", Thread.currentThread(), bucket, object, ret))
                 .andFinallyTry(bufferedReader::close)
                 .getOrElseThrow(MinioException::new);
     }
 
     @Override
-    public ObjectWriteResponse uploadTitle(String videoId, String titlePrefix) {
-        PipedOutputStream pipedOutputStream = new PipedOutputStream();
-        PipedInputStream pipedInputStream = Try.success(pipedOutputStream)
-                .mapTry(PipedInputStream::new)
-                .getOrElseThrow(MinioException::new);
-        Try.of(() -> new BufferedWriter(new OutputStreamWriter(pipedOutputStream)))
-                .andThenTry(bufferedWriter -> bufferedWriter.write(titlePrefix + LocalDate.now() + videoId))
-                .andThenTry(BufferedWriter::flush)
-                .andThenTry(BufferedWriter::close)
-                .getOrElseThrow(MinioException::new);
-        return Try.of(() -> minIOPutVideoArg.build(videoId, pipedInputStream))
-                .mapTry(minioClient::putObject)
-                .andThenTry(resp -> log.info("upload done, thread:{}, videoId: {}, eTag:{}, versionId:{}, object:{}", Thread.currentThread(), videoId, resp.etag(), resp.versionId(), resp.object()))
-                .getOrElseThrow(MinioException::new);
+    public boolean tryLock(String videoId, Thread thread) {
+        // TODO
+        return false;
     }
 
 }

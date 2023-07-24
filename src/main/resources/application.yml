@@ -33,8 +33,10 @@ minio:
     secretKey: ${MINIO_SECRET_KEY}
 
 yt:
-  channel-id: ${YT_CHANNEL_ID:1,2}
+  channel-id: ${YT_CHANNEL_ID:1}
   schedule:
     enable: ${YT_SCHEDULE_ENABLE:false}
   scan:
     cron: ${YT_SCAN_CRON:0 0/5 * * * ?}
+  filter-upload-date: ${YT_FILTER_UPLOAD_DATE:2}
+  lock-time-out-minute: ${YT_LOCK_TIME_OUT_MINUTE:30}

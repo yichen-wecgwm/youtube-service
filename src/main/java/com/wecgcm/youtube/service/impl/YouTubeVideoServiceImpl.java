@@ -1,6 +1,9 @@
 package com.wecgcm.youtube.service.impl;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.wecgcm.youtube.model.arg.MinioArg;
+import com.wecgcm.youtube.model.arg.YTDLPArg;
+import com.wecgcm.youtube.model.dto.ChannelDto;
 import com.wecgcm.youtube.service.MinioService;
 import com.wecgcm.youtube.service.YTDLPService;
 import com.wecgcm.youtube.service.YouTubeVideoService;
@@ -12,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.*;
 
@@ -25,6 +29,7 @@ import java.util.concurrent.*;
 public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     private final YTDLPService ytdlpService;
     private final MinioService minioService;
+    private static final String TITLE = "title";
 
     @Value("#{'${yt.channel-id}'.split(',')}")
     private List<Integer> channelIdList;
@@ -40,32 +45,35 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     }
 
     @Override
-    public void scanAsync(){
-        channelIdList.forEach(channelId ->
-                        CompletableFuture.completedStage(channelId)
-                            .thenApplyAsync(minioService::getChannelInfo, SCAN)
-                            .thenApply(ytdlpService::search)
-                            .thenAccept(videoList -> {
-                                videoList.getVideoIdList().forEach(videoId -> {
-                                    CompletableFuture.completedStage(videoId)
-                                            .thenAcceptAsync(v -> minioService.uploadTitle(v, videoList.getTitlePrefix()), SCAN)
-                                            .runAfterBothAsync(this.download(videoId), () -> uploadToBilibili(videoId),DOWNLOAD_AND_UPLOAD)
-                                            .exceptionally(LogUtil.completionExceptionally(Void.class));
-                                });
-                            })
-                            .exceptionally(LogUtil.completionExceptionally(Void.class))
-                );
+    public List<CompletableFuture<Void>> scanAsync() {
+        return channelIdList.stream().map(channelId ->
+                CompletableFuture.completedStage(channelId)
+                        .thenApplyAsync(cId -> minioService.readJson(MinioArg.CHANNEL_BUCKET_NAME, cId + MinioArg.JSON_EXT, ChannelDto.class), SCAN)
+                        .thenApply(ytdlpService::search)
+                        .thenAccept(videoList -> {
+                            videoList.forEach(video -> {
+                                CompletableFuture.completedStage(video.getVideoId())
+                                        .thenAcceptAsync(videoId -> minioService.put(MinioArg.VIDEO_BUCKET_NAME, videoId + MinioArg.SLASH + TITLE, video.getTitlePrefix() + video.getUploadDate().format(DateTimeFormatter.ofPattern("MM-dd"))), SCAN)
+                                        .runAfterBothAsync(this.download(video.getVideoId()), () -> uploadToBilibili(video.getVideoId()), DOWNLOAD_AND_UPLOAD)
+                                        .exceptionally(LogUtil.completionExceptionally(Void.class));
+                            });
+                        })
+                        .exceptionally(LogUtil.completionExceptionally(Void.class))
+                        .toCompletableFuture()
+        ).toList();
     }
 
     @Override
     public CompletionStage<ObjectWriteResponse> download(String videoId) {
         return CompletableFuture.completedStage(videoId)
                 .thenApplyAsync(ytdlpService::download, DOWNLOAD_AND_UPLOAD)
-                .thenApply(minioService::uploadVideo)
+                .thenApply(filePath -> minioService.upload(MinioArg.VIDEO_BUCKET_NAME, videoId + MinioArg.SLASH + videoId + YTDLPArg.VIDEO_EXT ,filePath, MinioArg.VIDEO_TYPE))
                 .exceptionally(LogUtil.completionExceptionally(ObjectWriteResponse.class));
     }
 
-    private void uploadToBilibili(String videoId) {
 
+    private void uploadToBilibili(String videoId) {
+        // todo
     }
+
 }

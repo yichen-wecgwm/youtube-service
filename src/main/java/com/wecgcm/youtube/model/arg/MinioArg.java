@@ -5,10 +5,9 @@ package com.wecgcm.youtube.model.arg;
  * @date ：2023/07/23 18:02
  */
 public class MinioArg {
-    static final String VIDEO_BUCKET_NAME = "videos";
-    static final String SLASH = "/";
-    static final String VIDEO_TYPE = "video/webm";
-    static final String TITLE = "title";
-    static final String CHANNEL_BUCKET_NAME = "channel";
-    static final String JSON = ".json";
+    public static final String SLASH = "/";
+    public static final String VIDEO_TYPE = "video/webm";
+    public static final String VIDEO_BUCKET_NAME = "videos";
+    public static final String CHANNEL_BUCKET_NAME = "channel";
+    public static final String JSON_EXT = ".json";
 }

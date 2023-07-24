@@ -2,6 +2,8 @@ package com.wecgcm.youtube.service;
 
 import io.minio.ObjectWriteResponse;
 
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -11,7 +13,7 @@ import java.util.concurrent.CompletionStage;
 @SuppressWarnings("SpellCheckingInspection")
 public interface YouTubeVideoService {
 
-    void scanAsync();
+    List<CompletableFuture<Void>> scanAsync();
 
     /**
      * @param videoId e.g. JpTqSzm4JOk in www.youtube.com/watch?v=JpTqSzm4JOk

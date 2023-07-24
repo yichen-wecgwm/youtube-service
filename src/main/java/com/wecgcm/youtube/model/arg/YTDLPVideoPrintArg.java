@@ -13,20 +13,15 @@ import java.util.List;
 @SuppressWarnings("SpellCheckingInspection")
 @Slf4j
 @Component
-public class YTDLPSearchArg extends YTDLPArg{
-    private static final String CNT_OP = "-I";
-    private static final String CNT = ":10";
-    private static final String ID = "id";
+public class YTDLPVideoPrintArg extends YTDLPArg{
 
-    public List<String> build(String channelUrl) {
+    public List<String> build(String videoUrl, String printItem) {
         List<String> ret = ImmutableList.<String>builder()
                 .add(ytDLP)
-                .add(CNT_OP)
-                .add(CNT)
-                .add(PRINT_OP)
-                .add(ID)
                 .add(FLAT_PLAYLIST)
-                .add(channelUrl)
+                .add(PRINT_OP)
+                .add(printItem)
+                .add(videoUrl)
                 .build();
         log.info(String.join(" ", ret));
         return ret;

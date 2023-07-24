@@ -19,10 +19,6 @@ import org.springframework.stereotype.Component;
 public class YoutubeSchedule {
     private final YouTubeVideoService youTubeVideoService;
 
-    /**
-     * 1. 分布式锁
-     * 2. 通过两个 value*.yaml 控制始终只有某个 pod 进行搜索，搜索后再分发请求
-     */
     @Scheduled(cron = "${yt.scan.cron}")
     public void scanVideo(){
         log.info("schedule scan video start........");
