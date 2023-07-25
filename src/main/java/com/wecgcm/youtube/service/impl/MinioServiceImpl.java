@@ -2,7 +2,11 @@ package com.wecgcm.youtube.service.impl;
 
 import com.wecgcm.youtube.config.ObjectMapperSingleton;
 import com.wecgcm.youtube.exception.MinioException;
+import com.wecgcm.youtube.exception.handler.MinioLockFailException;
+import com.wecgcm.youtube.model.arg.MinioArg;
+import com.wecgcm.youtube.model.dto.VideoDto;
 import com.wecgcm.youtube.service.MinioService;
+import com.wecgcm.youtube.util.LogUtil;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import io.minio.*;
@@ -11,10 +15,14 @@ import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
+import java.time.ZonedDateTime;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 /**
@@ -26,6 +34,8 @@ import java.util.stream.Collectors;
 @Service
 public class MinioServiceImpl implements MinioService {
     private final MinioClient minioClient;
+    @Value("${yt.lock-time-out-minute}")
+    private int lockTimeOutMinute;
 
     @Override
     public ObjectWriteResponse upload(String bucket, String object, String fileName, String contentType) {
@@ -75,10 +85,21 @@ public class MinioServiceImpl implements MinioService {
     }
 
     @Override
+    public void remove(String bucket, String object) {
+        Try.run(() -> minioClient
+                        .removeObject(RemoveObjectArgs
+                                .builder()
+                                .bucket(bucket)
+                                .object(object)
+                                .build()))
+                .getOrElseThrow(MinioException::new);
+    }
+
+    @Override
     public StatObjectResponse statObject(String bucket, String object) {
         return Try.of(() -> minioClient.statObject(StatObjectArgs.builder().bucket(bucket).object(object).build()))
                 .recoverWith(ErrorResponseException.class, e -> {
-                    if ("NoSuchKey" .equals(e.errorResponse().code())) {
+                    if ("NoSuchKey".equals(e.errorResponse().code())) {
                         // Not found
                         return Try.success(null);
                     }
@@ -108,9 +129,23 @@ public class MinioServiceImpl implements MinioService {
     }
 
     @Override
-    public boolean tryLock(String videoId, Thread thread) {
-        // TODO
-        return false;
+    public CompletionStage<VideoDto> tryLock(VideoDto videoDto) {
+        String videoId = videoDto.getVideoId();
+        String lockObject = MinioArg.Lock.object(videoId);
+        StatObjectResponse resp = statObject(MinioArg.Lock.bucket(), lockObject);
+        if (resp != null && resp.lastModified().plusMinutes(lockTimeOutMinute).isAfter(ZonedDateTime.now())) {
+            return CompletableFuture.failedStage(new MinioLockFailException("lock not expired"));
+        }
+        // todo concurrent not support yet
+        ObjectWriteResponse put = put(MinioArg.Lock.bucket(), lockObject, Thread.currentThread().getName());
+        return put != null ? CompletableFuture.completedStage(videoDto) : CompletableFuture.failedStage(new MinioLockFailException("lock fail"));
+    }
+
+    @Override
+    public <T> T unlock(String videoId, Throwable throwable) {
+        // TODO concurrent not support yet
+        remove(MinioArg.Lock.bucket(), MinioArg.Lock.object(videoId));
+        return LogUtil.<T>completionExceptionally().apply(throwable);
     }
 
 }

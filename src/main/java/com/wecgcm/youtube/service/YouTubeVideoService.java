@@ -13,7 +13,7 @@ import java.util.concurrent.CompletionStage;
 @SuppressWarnings("SpellCheckingInspection")
 public interface YouTubeVideoService {
 
-    List<CompletableFuture<Void>> scanAsync();
+    List<CompletableFuture<List<CompletableFuture<Void>>>> scanAsync();
 
     /**
      * @param videoId e.g. JpTqSzm4JOk in www.youtube.com/watch?v=JpTqSzm4JOk

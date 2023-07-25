@@ -9,7 +9,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
@@ -28,10 +27,10 @@ public class LogUtil {
         }
     }
 
-    public static <T> Function<Throwable, T> completionExceptionally(Class<T> clazz) {
+    public static <T> Function<Throwable, T> completionExceptionally() {
         return e -> {
             LogUtil.recordOnExceptionHandler(Thread.currentThread(), e);
-            return new CompletableFuture<T>().resultNow();
+            return null;
         };
     }
 

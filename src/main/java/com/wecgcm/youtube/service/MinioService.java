@@ -1,7 +1,10 @@
 package com.wecgcm.youtube.service;
 
+import com.wecgcm.youtube.model.dto.VideoDto;
 import io.minio.ObjectWriteResponse;
 import io.minio.StatObjectResponse;
+
+import java.util.concurrent.CompletionStage;
 
 public interface MinioService {
 
@@ -9,9 +12,13 @@ public interface MinioService {
 
     ObjectWriteResponse put(String bucket, String object, String text);
 
+    void remove(String bucket, String object);
+
     StatObjectResponse statObject(String bucket, String object);
 
     <T> T readJson(String bucket, String object, Class<T> clazz);
 
-    boolean tryLock(String videoId, Thread thread);
+    CompletionStage<VideoDto> tryLock(VideoDto videoDto);
+
+    <T> T unlock(String videoId, Throwable throwable);
 }

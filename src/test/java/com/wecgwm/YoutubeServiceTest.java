@@ -39,9 +39,10 @@ public class YoutubeServiceTest {
     private static final String videoId = "LsrJNUT0eTk";
     @Test
     public void scanAsyncTest(){
-        List<CompletableFuture<Void>> completableFutures = youTubeVideoServiceImpl.scanAsync();
+        List<CompletableFuture<List<CompletableFuture<Void>>>> completableFutures = youTubeVideoServiceImpl.scanAsync();
         while (true) {
-            if (completableFutures.stream().allMatch(CompletableFuture::isDone)) {
+            if (completableFutures.stream().allMatch(CompletableFuture::isDone)
+                    && completableFutures.stream().map(CompletableFuture::resultNow).filter(Objects::nonNull).flatMap(List::stream).allMatch(CompletableFuture::isDone)) {
                 break;
             }
         }
@@ -54,12 +55,17 @@ public class YoutubeServiceTest {
 
     @Test
     public void putTitleTest() throws InterruptedException {
-        minioService.put(MinioArg.VIDEO_BUCKET_NAME, videoId + MinioArg.SLASH + "title", "[123]" + "0502" + MinioArg.SLASH + videoId);
+        minioService.put(MinioArg.Title.bucket(), MinioArg.Title.object(videoId), "from unit test");
+    }
+
+    @Test
+    public void removeTest() throws InterruptedException {
+        minioService.remove(MinioArg.Title.bucket(), MinioArg.Title.object(videoId));
     }
 
     @Test
     public void getChannelInfoTest(){
-        log.info(minioService.readJson(MinioArg.CHANNEL_BUCKET_NAME, "1" + MinioArg.JSON_EXT, ChannelDto.class).toString());
+        log.info(minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object("1"), ChannelDto.class).toString());
     }
 
     @Test
@@ -67,7 +73,7 @@ public class YoutubeServiceTest {
         List.of(1).forEach(channelId ->{
                     try {
                         CompletableFuture.completedStage(channelId)
-                                        .thenApply(cId -> minioService.readJson(MinioArg.CHANNEL_BUCKET_NAME, String.valueOf(cId) + MinioArg.JSON_EXT, ChannelDto.class))
+                                        .thenApply(cId -> minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object(String.valueOf(cId)), ChannelDto.class))
                                         .thenApply(ytdlpService::search).toCompletableFuture()
                                         .get();
                     } catch (InterruptedException | ExecutionException e) {
@@ -79,13 +85,13 @@ public class YoutubeServiceTest {
 
     @Test
     public void statObjectTest() {
-        log.info(String.valueOf(minioService.statObject(MinioArg.VIDEO_BUCKET_NAME, "AdLrsE9d9aI/title")));
-        log.info(String.valueOf(minioService.statObject(MinioArg.VIDEO_BUCKET_NAME, "AdLrsE9d9aI/title2")));
+        log.info(String.valueOf(minioService.statObject(MinioArg.Title.bucket(), "AdLrsE9d9aI/title")));
+        log.info(String.valueOf(minioService.statObject(MinioArg.Title.bucket(), "AdLrsE9d9aI/title2")));
     }
 
     @Test
     public void getUploadDateTest() {
-        LocalDateTime uploadDate = LocalDate.parse(ytdlpService.getInfo(videoId, "upload_date"), DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
+        LocalDateTime uploadDate = LocalDate.parse(ytdlpService.getVideoInfo(videoId, "upload_date"), DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
         System.out.println(uploadDate);
     }
 

@@ -5,8 +5,8 @@ import com.wecgcm.youtube.config.ObjectMapperSingleton;
 import com.wecgcm.youtube.config.OkHttpClientConfig;
 import com.wecgcm.youtube.exception.HttpException;
 import com.wecgcm.youtube.model.arg.MinioArg;
-import com.wecgcm.youtube.model.arg.YTDLPArg;
 import com.wecgcm.youtube.model.dto.ChannelDto;
+import com.wecgcm.youtube.model.dto.VideoDto;
 import com.wecgcm.youtube.model.req.BilibiliUploadRequest;
 import com.wecgcm.youtube.service.MinioService;
 import com.wecgcm.youtube.service.YTDLPService;
@@ -41,7 +41,6 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     private final YTDLPService ytdlpService;
     private final MinioService minioService;
     private final OkHttpClient okHttpClient;
-    private static final String TITLE = "title";
     private static final String VIDEO_UPLOAD_PATH = "/video/upload";
 
     @SuppressWarnings({"unused", "MismatchedQueryAndUpdateOfCollection"})
@@ -61,22 +60,22 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     }
 
     @Override
-    public List<CompletableFuture<Void>> scanAsync() {
+    public List<CompletableFuture<List<CompletableFuture<Void>>>> scanAsync() {
         return channelIdList.stream().map(channelId ->
                 CompletableFuture.completedStage(channelId)
-                        .thenApplyAsync(cId -> minioService.readJson(MinioArg.CHANNEL_BUCKET_NAME, cId + MinioArg.JSON_EXT, ChannelDto.class), SCAN)
+                        .thenApplyAsync(cId -> minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object(String.valueOf(cId)), ChannelDto.class), SCAN)
                         .thenApply(ytdlpService::search)
-                        .thenAccept(videoList -> {
-                            videoList.forEach(video -> {
-                                CompletableFuture
-                                        .runAsync(() -> minioService.put(MinioArg.VIDEO_BUCKET_NAME,
-                                                video.getVideoId() + MinioArg.SLASH + TITLE,
-                                                video.getTitlePrefix() + video.getUploadDate().format(DateTimeFormatter.ofPattern("MM-dd"))), SCAN)
-                                        .runAfterBothAsync(this.download(video.getVideoId()), () -> uploadToBilibili(video.getVideoId()), DOWNLOAD_AND_UPLOAD)
-                                        .exceptionally(LogUtil.completionExceptionally(Void.class));
-                            });
-                        })
-                        .exceptionally(LogUtil.completionExceptionally(Void.class))
+                        .thenApply(videoList ->
+                                videoList.stream().map(video ->
+                                        CompletableFuture.completedStage(video)
+                                                .thenComposeAsync(minioService::tryLock)
+                                                .thenAcceptAsync(this::uploadVideoTitle, SCAN)
+                                                .runAfterBothAsync(this.download(video.getVideoId()), () -> uploadToBilibili(video.getVideoId()), DOWNLOAD_AND_UPLOAD)
+                                                .exceptionally(e -> minioService.unlock(video.getVideoId(), e))
+                                                .toCompletableFuture()
+                                ).toList()
+                        )
+                        .exceptionally(LogUtil.completionExceptionally())
                         .toCompletableFuture()
         ).toList();
     }
@@ -85,10 +84,15 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     public CompletionStage<ObjectWriteResponse> download(String videoId) {
         return CompletableFuture.completedStage(videoId)
                 .thenApplyAsync(ytdlpService::download, DOWNLOAD_AND_UPLOAD)
-                .thenApply(filePath -> minioService.upload(MinioArg.VIDEO_BUCKET_NAME, videoId + MinioArg.SLASH + videoId + YTDLPArg.VIDEO_EXT ,filePath, MinioArg.VIDEO_TYPE))
-                .exceptionally(LogUtil.completionExceptionally(ObjectWriteResponse.class));
+                .thenApply(filePath -> minioService.upload(MinioArg.Video.bucket(), MinioArg.Video.object(videoId), filePath, MinioArg.VIDEO_TYPE))
+                .exceptionally(e -> minioService.unlock(videoId, e));
     }
 
+    private void uploadVideoTitle(VideoDto video){
+        minioService.put(MinioArg.Title.bucket(),
+                MinioArg.Title.object(video.getVideoId()),
+                video.getTitlePrefix() + video.getUploadDate().format(DateTimeFormatter.ofPattern("MM-dd")));
+    }
 
     private void uploadToBilibili(String videoId) {
         String jsonString = Try.success(videoId).map(BilibiliUploadRequest::new)
@@ -107,7 +111,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                 try (ResponseBody responseBody = response.body()) {
-                    if (!response.isSuccessful()){
+                    if (!response.isSuccessful()) {
                         throw new HttpException("bilibili resp not 200, body:" + responseBody);
                     }
                     log.info("bilibili resp successful, body{}", Objects.requireNonNull(responseBody).string());
