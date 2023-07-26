@@ -28,7 +28,7 @@ public interface YTDLPService {
     /**
      * @param videoId videoId e.g. JpTqSzm4JOk in www.youtube.com/watch?v=JpTqSzm4JOk
      */
-    String download(String videoId);
+    void download(String videoId);
 
     List<String> getVideoInfo(String videoId, String... target);
 

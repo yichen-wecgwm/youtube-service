@@ -18,15 +18,20 @@ public class YTDLPDownloadArg extends YTDLPArg{
     public List<String> build(String videoId) {
         List<String> ret = ImmutableList.<String>builder()
                 .add(ytDLP)
+                .add(WRITE_THUMBNAIL)
                 .add(OUT_PUT_OP)
-                .add(filePath(videoId))
+                .add(videoPath(videoId))
                 .add(VIDEO_URL_PREFIX + videoId)
                 .build();
         return ret;
     }
 
-    public static String filePath(String videoId) {
+    public static String videoPath(String videoId) {
         return YTDLPArg.OUT_PUT_DIR + videoId + YTDLPArg.VIDEO_EXT;
+    }
+
+    public static String thumbnailPath(String videoId) {
+        return YTDLPArg.OUT_PUT_DIR + videoId + YTDLPArg.THUMBNAIL_EXT;
     }
 
 }

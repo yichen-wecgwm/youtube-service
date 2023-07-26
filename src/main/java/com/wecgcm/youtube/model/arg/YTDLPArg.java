@@ -9,11 +9,13 @@ import org.springframework.beans.factory.annotation.Value;
 @SuppressWarnings("SpellCheckingInspection")
 public class YTDLPArg {
     static final String VIDEO_URL_PREFIX = "https://www.youtube.com/watch?v=";
+    static final String WRITE_THUMBNAIL = "--write-thumbnail";
     static final String OUT_PUT_OP = "-o";
     static final String PRINT_OP = "--print";
     static final String FLAT_PLAYLIST = "--flat-playlist";
-    public static final String OUT_PUT_DIR = "videos/";
-    public static final String VIDEO_EXT = ".webm";
+    static final String VIDEO_EXT = ".webm";
+    static final String THUMBNAIL_EXT = ".webp";
+    static final String OUT_PUT_DIR = "videos/";
     @Value("${yt-dlp.path}")
     String ytDLP;
 }

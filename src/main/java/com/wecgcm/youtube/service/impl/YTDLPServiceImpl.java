@@ -50,10 +50,9 @@ public class YTDLPServiceImpl implements YTDLPService {
     }
 
     @Override
-    public String download(String videoId) {
+    public void download(String videoId) {
         List<String> args = ytdlpDownloadArg.build(videoId);
         processTemplate(() -> new ProcessBuilder(args).redirectOutput(ProcessBuilder.Redirect.DISCARD), __ -> __, "download");
-        return YTDLPDownloadArg.filePath(videoId);
     }
 
     @Override

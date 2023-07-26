@@ -5,6 +5,7 @@ import com.wecgcm.youtube.config.ObjectMapperSingleton;
 import com.wecgcm.youtube.config.OkHttpClientConfig;
 import com.wecgcm.youtube.exception.HttpException;
 import com.wecgcm.youtube.model.arg.MinioArg;
+import com.wecgcm.youtube.model.arg.YTDLPDownloadArg;
 import com.wecgcm.youtube.model.dto.ChannelDto;
 import com.wecgcm.youtube.model.dto.VideoDto;
 import com.wecgcm.youtube.model.req.BilibiliUploadRequest;
@@ -81,8 +82,9 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     @Override
     public CompletionStage<ObjectWriteResponse> download(String videoId) {
         return CompletableFuture.completedStage(videoId)
-                .thenApplyAsync(ytdlpService::download, DOWNLOAD_AND_UPLOAD)
-                .thenApply(filePath -> minioService.upload(MinioArg.Video.bucket(), MinioArg.Video.object(videoId), filePath, MinioArg.VIDEO_TYPE))
+                .thenAcceptAsync(ytdlpService::download, DOWNLOAD_AND_UPLOAD)
+                .thenApply(__ -> minioService.upload(MinioArg.Video.bucket(), MinioArg.Video.object(videoId), YTDLPDownloadArg.videoPath(videoId), MinioArg.VIDEO_TYPE))
+                .thenApply(__ -> minioService.upload(MinioArg.Thumbnail.bucket(), MinioArg.Thumbnail.object(videoId), YTDLPDownloadArg.thumbnailPath(videoId), MinioArg.WEBP_TYPE))
                 .exceptionally(e -> minioService.unlock(videoId, e));
     }
 
