@@ -129,16 +129,21 @@ public class MinioServiceImpl implements MinioService {
     }
 
     @Override
-    public CompletionStage<VideoDto> tryLock(VideoDto videoDto) {
+    public boolean tryLock(VideoDto videoDto) {
         String videoId = videoDto.getVideoId();
         String lockObject = MinioArg.Lock.object(videoId);
         StatObjectResponse resp = statObject(MinioArg.Lock.bucket(), lockObject);
         if (resp != null && resp.lastModified().plusMinutes(lockTimeOutMinute).isAfter(ZonedDateTime.now())) {
-            return CompletableFuture.failedStage(new MinioLockFailException("lock not expired"));
+            log.info("videoId:{}, lock not expired", videoId);
+            return false;
         }
         // todo concurrent not support yet
         ObjectWriteResponse put = put(MinioArg.Lock.bucket(), lockObject, Thread.currentThread().getName());
-        return put != null ? CompletableFuture.completedStage(videoDto) : CompletableFuture.failedStage(new MinioLockFailException("lock fail"));
+        if (put != null) {
+            return true;
+        }
+        log.info("videoId:{}, lock fail", videoId);
+        return false;
     }
 
     @Override

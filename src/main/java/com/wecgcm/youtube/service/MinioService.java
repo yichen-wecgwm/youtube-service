@@ -18,7 +18,7 @@ public interface MinioService {
 
     <T> T readJson(String bucket, String object, Class<T> clazz);
 
-    CompletionStage<VideoDto> tryLock(VideoDto videoDto);
+    boolean tryLock(VideoDto videoDto);
 
     <T> T unlock(String videoId, Throwable throwable);
 }

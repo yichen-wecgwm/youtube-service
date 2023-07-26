@@ -65,11 +65,10 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                         .thenApplyAsync(cId -> minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object(String.valueOf(cId)), ChannelDto.class), SCAN)
                         .thenApply(ytdlpService::search)
                         .thenApply(videoList ->
-                                videoList.stream().map(video ->
+                                videoList.stream().filter(minioService::tryLock).map(video ->
                                         CompletableFuture.completedStage(video)
-                                                .thenComposeAsync(minioService::tryLock, SCAN)
-                                                .thenAccept(this::uploadVideoTitle)
-                                                .thenCombineAsync(this.download(video.getVideoId()), (__, ___) -> uploadToBilibili(video.getVideoId()), DOWNLOAD_AND_UPLOAD)
+                                                .thenAcceptAsync(this::uploadVideoTitle, DOWNLOAD_AND_UPLOAD)
+                                                .thenCombine(this.download(video.getVideoId()), (__, ___) -> uploadToBilibili(video.getVideoId()))
                                                 .exceptionally(e -> minioService.unlock(video.getVideoId(), e))
                                                 .toCompletableFuture()
                                 ).toList()
