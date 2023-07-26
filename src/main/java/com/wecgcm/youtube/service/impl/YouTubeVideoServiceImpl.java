@@ -24,7 +24,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.*;
@@ -41,7 +40,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     private final YTDLPService ytdlpService;
     private final MinioService minioService;
     private final OkHttpClient okHttpClient;
-    private static final String VIDEO_UPLOAD_PATH = "/video/upload";
+    private static final String BILIBILI_VIDEO_UPLOAD_PATH = "/video/upload";
 
     @SuppressWarnings({"unused", "MismatchedQueryAndUpdateOfCollection"})
     @Value("#{'${yt.channel-id}'.split(',')}")
@@ -55,12 +54,12 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
             new ArrayBlockingQueue<>(5), new ThreadFactoryBuilder().setNameFormat("yt-dl-up-%d").build());
 
     {
-        MetricsUtil.monitor(SCAN, "yt.scan");
-        MetricsUtil.monitor(DOWNLOAD_AND_UPLOAD, "yt.dl.up");
+        MetricsUtil.threadMonitor(SCAN, "yt.scan");
+        MetricsUtil.threadMonitor(DOWNLOAD_AND_UPLOAD, "yt.dl.up");
     }
 
     @Override
-    public List<CompletableFuture<List<CompletableFuture<Void>>>> scanAsync() {
+    public List<CompletableFuture<List<CompletableFuture<String>>>> scanAsync() {
         return channelIdList.stream().map(channelId ->
                 CompletableFuture.completedStage(channelId)
                         .thenApplyAsync(cId -> minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object(String.valueOf(cId)), ChannelDto.class), SCAN)
@@ -68,9 +67,9 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                         .thenApply(videoList ->
                                 videoList.stream().map(video ->
                                         CompletableFuture.completedStage(video)
-                                                .thenComposeAsync(minioService::tryLock)
-                                                .thenAcceptAsync(this::uploadVideoTitle, SCAN)
-                                                .runAfterBothAsync(this.download(video.getVideoId()), () -> uploadToBilibili(video.getVideoId()), DOWNLOAD_AND_UPLOAD)
+                                                .thenComposeAsync(minioService::tryLock, SCAN)
+                                                .thenAccept(this::uploadVideoTitle)
+                                                .thenCombineAsync(this.download(video.getVideoId()), (__, ___) -> uploadToBilibili(video.getVideoId()), DOWNLOAD_AND_UPLOAD)
                                                 .exceptionally(e -> minioService.unlock(video.getVideoId(), e))
                                                 .toCompletableFuture()
                                 ).toList()
@@ -91,16 +90,16 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     private void uploadVideoTitle(VideoDto video){
         minioService.put(MinioArg.Title.bucket(),
                 MinioArg.Title.object(video.getVideoId()),
-                video.getTitlePrefix() + video.getUploadDate().format(DateTimeFormatter.ofPattern("MM-dd")));
+                video.getTitle());
     }
 
-    private void uploadToBilibili(String videoId) {
-        String jsonString = Try.success(videoId).map(BilibiliUploadRequest::new)
+    private String uploadToBilibili(String videoId) {
+        String jsonRequestBody = Try.success(videoId).map(BilibiliUploadRequest::new)
                 .mapTry(req -> ObjectMapperSingleton.INSTANCE.writeValueAsString(req))
                 .get();
         Request request = new Request.Builder()
-                .url(bilibiliServiceUrl + VIDEO_UPLOAD_PATH)
-                .post(RequestBody.create(jsonString, OkHttpClientConfig.JSON))
+                .url(bilibiliServiceUrl + BILIBILI_VIDEO_UPLOAD_PATH)
+                .post(RequestBody.create(jsonRequestBody, OkHttpClientConfig.JSON))
                 .build();
         okHttpClient.newCall(request).enqueue(new Callback() {
             @Override
@@ -112,12 +111,13 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                 try (ResponseBody responseBody = response.body()) {
                     if (!response.isSuccessful()) {
-                        throw new HttpException("bilibili resp not 200, body:" + responseBody);
+                        throw new HttpException("bilibili service Unexpected code: " + response);
                     }
                     log.info("bilibili resp successful, body{}", Objects.requireNonNull(responseBody).string());
                 }
             }
         });
+        return videoId;
     }
 
 }

@@ -9,5 +9,4 @@ import lombok.Data;
 @Data
 public class ChannelDto {
     private String url;
-    private String titlePrefix;
 }

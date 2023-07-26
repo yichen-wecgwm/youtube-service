@@ -28,7 +28,7 @@ public class SpringScheduleConfig implements SchedulingConfigurer {
                         .setNameFormat("yt-schedule-%d")
                         .setUncaughtExceptionHandler(LogUtil::recordOnExceptionHandler)
                         .build());
-        MetricsUtil.monitor(scheduledThreadPoolExecutor, "yt.schedule");
+        MetricsUtil.threadMonitor(scheduledThreadPoolExecutor, "yt.schedule");
         return scheduledThreadPoolExecutor;
     }
 

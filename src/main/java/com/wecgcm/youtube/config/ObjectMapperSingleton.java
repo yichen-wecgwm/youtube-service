@@ -1,5 +1,6 @@
 package com.wecgcm.youtube.config;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class ObjectMapperSingleton {
 
-    public static ObjectMapper INSTANCE = new ObjectMapper();
+    public static ObjectMapper INSTANCE = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
 }

@@ -13,11 +13,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.util.ReflectionUtils;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
@@ -39,7 +40,7 @@ public class YoutubeServiceTest {
     private static final String videoId = "LsrJNUT0eTk";
     @Test
     public void scanAsyncTest(){
-        List<CompletableFuture<List<CompletableFuture<Void>>>> completableFutures = youTubeVideoServiceImpl.scanAsync();
+        List<CompletableFuture<List<CompletableFuture<String>>>> completableFutures = youTubeVideoServiceImpl.scanAsync();
         while (true) {
             if (completableFutures.stream().allMatch(CompletableFuture::isDone)
                     && completableFutures.stream().map(CompletableFuture::resultNow).filter(Objects::nonNull).flatMap(List::stream).allMatch(CompletableFuture::isDone)) {
@@ -90,9 +91,17 @@ public class YoutubeServiceTest {
     }
 
     @Test
-    public void getUploadDateTest() {
-        LocalDateTime uploadDate = LocalDate.parse(ytdlpService.getVideoInfo(videoId, "upload_date"), DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
-        System.out.println(uploadDate);
+    public void getVideoInfoTest() throws IOException {
+        byte[] bytes = "PSY - GANGNAM STYLE (강남스타일) M/V".getBytes();
+        InputStreamReader reader = new InputStreamReader(new ByteArrayInputStream(bytes));
+        BufferedReader bufferedReader = new BufferedReader(reader);
+        String str = bufferedReader.readLine();
+        System.out.println(str);
+
+        InputStreamReader reader1 = new InputStreamReader(System.in);
+        System.out.println(reader1.getEncoding());
+        List<String> videoInfo = ytdlpService.getVideoInfo(videoId, "upload_date", "title");
+        System.out.println(videoInfo);
     }
 
     @Test

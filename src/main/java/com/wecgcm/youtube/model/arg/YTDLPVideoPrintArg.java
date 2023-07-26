@@ -14,16 +14,16 @@ import java.util.List;
 @Slf4j
 @Component
 public class YTDLPVideoPrintArg extends YTDLPArg{
+    private static final String DELIMITER = ",";
 
-    public List<String> build(String videoId, String printItem) {
-        List<String> ret = ImmutableList.<String>builder()
+    public List<String> build(String videoId, String... printItemList) {
+        return ImmutableList.<String>builder()
                 .add(ytDLP)
                 .add(FLAT_PLAYLIST)
                 .add(PRINT_OP)
-                .add(printItem)
+                .add(String.join(DELIMITER, printItemList))
                 .add(VIDEO_URL_PREFIX + videoId)
                 .build();
-        return ret;
     }
 
 }

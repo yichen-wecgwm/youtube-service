@@ -11,7 +11,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  */
 public class MetricsUtil {
 
-    public static void monitor(ThreadPoolExecutor executor, String key){
+    public static void threadMonitor(ThreadPoolExecutor executor, String key){
         Gauge.builder("thread.pool.active." + key, executor::getActiveCount)
                 .tag("active", "count")
                 .register(Metrics.globalRegistry);

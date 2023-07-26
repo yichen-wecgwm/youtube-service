@@ -2,6 +2,7 @@ package com.wecgcm.youtube.util;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.LoggerFactory;
 
@@ -17,14 +18,10 @@ import java.util.function.Function;
  */
 @Slf4j
 public class LogUtil {
-    public static final String EMPTY = "";
 
-    public static void error(InputStream stream, Class<?> clazz) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
-            reader.lines().forEach(s -> LoggerFactory.getLogger(clazz).error(s));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public static void error(BufferedReader reader, Class<?> clazz) {
+        reader.lines().forEach(s -> LoggerFactory.getLogger(clazz).error(s));
+        Try.success(reader).andThenTry(BufferedReader::close).get();
     }
 
     public static <T> Function<Throwable, T> completionExceptionally() {
@@ -35,13 +32,11 @@ public class LogUtil {
     }
 
     public static void recordOnExceptionHandler(Thread t, Throwable e) {
-        log.error("thread:{}, msg:{}", t == null ? EMPTY : t, e.getMessage(), e);
-        Counter.Builder exception = Counter.builder("exception.handler")
-                .tag("exception", e.getClass().getSimpleName());
-        if (t != null) {
-            exception.tag("thread", t.getName());
-        }
-        exception.register(Metrics.globalRegistry)
+        log.error("thread:{}, msg:{}", t, e.getMessage(), e);
+        Counter.builder("exception.handler")
+                .tag("exception", e.getClass().getSimpleName())
+                .tag("thread", t.getName())
+                .register(Metrics.globalRegistry)
                 .increment();
     }
 

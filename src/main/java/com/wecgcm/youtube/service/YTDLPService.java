@@ -30,7 +30,7 @@ public interface YTDLPService {
      */
     String download(String videoId);
 
-    String getVideoInfo(String videoId, String target);
+    List<String> getVideoInfo(String videoId, String... target);
 
     Logger getLog();
 
@@ -45,7 +45,7 @@ public interface YTDLPService {
                 .mapTry(function)
                 .andThenTry(process::waitFor)
                 .filter(__ -> process.exitValue() == PROCESS_NORMAL_TERMINATION, p -> {
-                    LogUtil.error(process.getErrorStream(), this.getClass());
+                    LogUtil.error(process.errorReader(), this.getClass());
                     return new YTDLPException("yt-dlp " + key + " process exit error");
                 })
                 .andFinally(process::destroy)

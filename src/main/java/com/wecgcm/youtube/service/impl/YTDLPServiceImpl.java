@@ -18,10 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Stream;
@@ -39,6 +36,7 @@ public class YTDLPServiceImpl implements YTDLPService {
     private final YTDLPSearchArg ytdlpSearchArg;
     private final YTDLPVideoPrintArg ytdlpVideoPrintArg;
     private final MinioService minioService;
+    private static final String TITLE = "title";
     private static final String UPLOAD_DATE = "upload_date";
 
     @Value("${yt.filter-upload-date}")
@@ -47,8 +45,8 @@ public class YTDLPServiceImpl implements YTDLPService {
     @Override
     public List<VideoDto> search(ChannelDto channel) {
         List<String> args = ytdlpSearchArg.build(channel.getUrl());
-        List<String> videoIdList = processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.getInputStream()), "search");
-        return takeVideoId(videoIdList, channel.getTitlePrefix());
+        List<String> videoIdList = processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.inputReader()), "search");
+        return takeVideoId(videoIdList);
     }
 
     @Override
@@ -59,10 +57,9 @@ public class YTDLPServiceImpl implements YTDLPService {
     }
 
     @Override
-    public String getVideoInfo(String videoId, String target) {
+    public List<String> getVideoInfo(String videoId, String... target) {
         List<String> args = ytdlpVideoPrintArg.build(videoId, target);
-        return processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.getInputStream()), "get-" + target)
-                .get(0);
+        return processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.inputReader()), "get-info");
     }
 
     @Override
@@ -70,24 +67,23 @@ public class YTDLPServiceImpl implements YTDLPService {
         return log;
     }
 
-    private List<VideoDto> takeVideoId(List<String> videoIdList, String titlePrefix) {
+    private List<VideoDto> takeVideoId(List<String> videoIdList) {
         List<VideoDto> ret = videoIdList.stream()
-                .map(id -> new VideoDto(id, LocalDate.parse(getVideoInfo(id, UPLOAD_DATE), DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay(), titlePrefix))
+                .map(id -> {
+                    List<String> videoInfo = getVideoInfo(id, TITLE, UPLOAD_DATE);
+                    return new VideoDto(id, videoInfo.get(0), LocalDate.parse(videoInfo.get(1), DateTimeFormatter.ofPattern("yyyyMMdd")));
+                })
                 .filter(videoDto -> {
-                    if (videoDto.getUploadDate().plusDays(filterUploadDate).isBefore(LocalDateTime.now())) {
+                    if (videoDto.getUploadDate().plusDays(filterUploadDate).isBefore(LocalDate.now())) {
                         return false;
                     }
-                    return minioService.statObject(MinioArg.Archive.bucket(), MinioArg.Archive.object(videoDto.getVideoId())) != null;
+                    return minioService.statObject(MinioArg.Archive.bucket(), MinioArg.Archive.object(videoDto.getVideoId())) == null;
                 }).toList();
         log.info("take done, thread:{}, VideoList:{}", Thread.currentThread(), ret);
         return ret;
     }
 
-    private List<String> readPrint(InputStream inputStream) {
-        BufferedReader reader = Try.success(inputStream)
-                .map(InputStreamReader::new)
-                .map(BufferedReader::new)
-                .getOrElseThrow(YTDLPException::new);
+    private List<String> readPrint(BufferedReader reader) {
         return Try.success(reader)
                 .mapTry(BufferedReader::lines)
                 .mapTry(Stream::toList)
