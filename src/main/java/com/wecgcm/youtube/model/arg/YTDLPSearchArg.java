@@ -17,16 +17,15 @@ import java.util.List;
 public class YTDLPSearchArg extends YTDLPArg{
     @Value("${yt-dlp.search.cnt}")
     private String cnt;
-    private static final String SEARCH_CNT_OP = "-I";
-    @SuppressWarnings("ConstantValue")
-    private final String SEARCH_CNT = ":" + cnt;
+    private static final String CNT_OP = "-I";
     private static final String ID = "id";
+    private static final String COLON = ":";
 
     public List<String> build(String channelUrl) {
         return ImmutableList.<String>builder()
                 .add(ytDLP)
-                .add(SEARCH_CNT_OP)
-                .add(SEARCH_CNT)
+                .add(CNT_OP)
+                .add(COLON + cnt)
                 .add(PRINT_OP)
                 .add(ID)
                 .add(FLAT_PLAYLIST)
