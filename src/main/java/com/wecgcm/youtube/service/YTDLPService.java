@@ -45,6 +45,7 @@ public interface YTDLPService {
                 .mapTry(function)
                 .andThenTry(process::waitFor)
                 .filter(__ -> process.exitValue() == PROCESS_NORMAL_TERMINATION, p -> {
+                    getLog().info("{} command:{}, thread:{}", key, processBuilder.command(), Thread.currentThread());
                     LogUtil.error(process.errorReader(), this.getClass());
                     return new YTDLPException("yt-dlp " + key + " process exit error");
                 })

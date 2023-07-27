@@ -16,14 +16,15 @@ import java.util.List;
 public class YTDLPDownloadArg extends YTDLPArg{
 
     public List<String> build(String videoId) {
-        List<String> ret = ImmutableList.<String>builder()
+        return ImmutableList.<String>builder()
                 .add(ytDLP)
                 .add(WRITE_THUMBNAIL)
+                .add(THUMBNAILS_FORMAT_OP)
+                .add(THUMBNAILS_FORMAT)
                 .add(OUT_PUT_OP)
                 .add(videoPath(videoId))
                 .add(VIDEO_URL_PREFIX + videoId)
                 .build();
-        return ret;
     }
 
     public static String videoPath(String videoId) {
@@ -31,7 +32,7 @@ public class YTDLPDownloadArg extends YTDLPArg{
     }
 
     public static String thumbnailPath(String videoId) {
-        return YTDLPArg.OUT_PUT_DIR + videoId + YTDLPArg.THUMBNAIL_EXT;
+        return YTDLPArg.OUT_PUT_DIR + videoId + YTDLPArg.THUMBNAILS_EXT;
     }
 
 }

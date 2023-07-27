@@ -2,7 +2,6 @@ package com.wecgcm.youtube.service.impl;
 
 import com.wecgcm.youtube.config.ObjectMapperSingleton;
 import com.wecgcm.youtube.exception.MinioException;
-import com.wecgcm.youtube.exception.handler.MinioLockFailException;
 import com.wecgcm.youtube.model.arg.MinioArg;
 import com.wecgcm.youtube.model.dto.VideoDto;
 import com.wecgcm.youtube.service.MinioService;
@@ -21,8 +20,6 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 import java.time.ZonedDateTime;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 /**

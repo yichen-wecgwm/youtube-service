@@ -10,11 +10,13 @@ import org.springframework.beans.factory.annotation.Value;
 public class YTDLPArg {
     static final String VIDEO_URL_PREFIX = "https://www.youtube.com/watch?v=";
     static final String WRITE_THUMBNAIL = "--write-thumbnail";
+    static final String THUMBNAILS_FORMAT_OP = "--convert-thumbnails";
+    static final String THUMBNAILS_FORMAT = "png";
     static final String OUT_PUT_OP = "-o";
     static final String PRINT_OP = "--print";
     static final String FLAT_PLAYLIST = "--flat-playlist";
+    static final String THUMBNAILS_EXT = ".png";
     static final String VIDEO_EXT = ".webm";
-    static final String THUMBNAIL_EXT = ".webp";
     static final String OUT_PUT_DIR = "videos/";
     @Value("${yt-dlp.path}")
     String ytDLP;

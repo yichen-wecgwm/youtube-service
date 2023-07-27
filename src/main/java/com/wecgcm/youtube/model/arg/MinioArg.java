@@ -6,13 +6,13 @@ package com.wecgcm.youtube.model.arg;
  */
 public class MinioArg {
     public static final String VIDEO_TYPE = "video/webm";
-    public static final String WEBP_TYPE = "image/webp";
+    public static final String IMG_TYPE = "image/png";
     private static final String SLASH = "/";
     private static final String VIDEO_BUCKET_NAME = "videos";
     private static final String CHANNEL_BUCKET_NAME = "channel";
     private static final String JSON_EXT = ".json";
     private static final String VIDEO_EXT = ".webm";
-    private static final String THUMBNAIL_EXT = ".webp";
+    private static final String THUMBNAIL_EXT = ".png";
     private static final String TITLE = "title";
     private static final String ARCHIVE = "archive";
     private static final String LOCK = "lock";

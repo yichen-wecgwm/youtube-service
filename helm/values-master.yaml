@@ -66,6 +66,11 @@ env:
       configMapKeyRef:
         name: java-config
         key: BILIBILI_SERVICE_URL
+  - name: YT_DLP_SEARCH_CNT
+    valueFrom:
+      configMapKeyRef:
+        name: java-config
+        key: YT_DLP_SEARCH_CNT
 
 #envFrom:
 #  - secretRef:

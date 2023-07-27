@@ -23,7 +23,6 @@ public class YoutubeSchedule {
     public void scanVideo(){
         log.info("schedule scan video start........");
         youTubeVideoService.scanAsync();
-        log.info("schedule scan video end........");
     }
 
 }

@@ -84,7 +84,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
         return CompletableFuture.completedStage(videoId)
                 .thenAcceptAsync(ytdlpService::download, DOWNLOAD_AND_UPLOAD)
                 .thenApply(__ -> minioService.upload(MinioArg.Video.bucket(), MinioArg.Video.object(videoId), YTDLPDownloadArg.videoPath(videoId), MinioArg.VIDEO_TYPE))
-                .thenApply(__ -> minioService.upload(MinioArg.Thumbnail.bucket(), MinioArg.Thumbnail.object(videoId), YTDLPDownloadArg.thumbnailPath(videoId), MinioArg.WEBP_TYPE))
+                .thenApply(__ -> minioService.upload(MinioArg.Thumbnail.bucket(), MinioArg.Thumbnail.object(videoId), YTDLPDownloadArg.thumbnailPath(videoId), MinioArg.IMG_TYPE))
                 .exceptionally(e -> minioService.unlock(videoId, e));
     }
 

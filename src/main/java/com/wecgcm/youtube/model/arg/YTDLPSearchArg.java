@@ -2,6 +2,7 @@ package com.wecgcm.youtube.model.arg;
 
 import com.google.common.collect.ImmutableList;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -14,21 +15,23 @@ import java.util.List;
 @Slf4j
 @Component
 public class YTDLPSearchArg extends YTDLPArg{
-    private static final String CNT_OP = "-I";
-    private static final String CNT = ":10";
+    @Value("${yt-dlp.search.cnt}")
+    private String cnt;
+    private static final String SEARCH_CNT_OP = "-I";
+    @SuppressWarnings("ConstantValue")
+    private final String SEARCH_CNT = ":" + cnt;
     private static final String ID = "id";
 
     public List<String> build(String channelUrl) {
-        List<String> ret = ImmutableList.<String>builder()
+        return ImmutableList.<String>builder()
                 .add(ytDLP)
-                .add(CNT_OP)
-                .add(CNT)
+                .add(SEARCH_CNT_OP)
+                .add(SEARCH_CNT)
                 .add(PRINT_OP)
                 .add(ID)
                 .add(FLAT_PLAYLIST)
                 .add(channelUrl)
                 .build();
-        return ret;
     }
 
 }
