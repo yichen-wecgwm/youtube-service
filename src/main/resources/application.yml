@@ -22,6 +22,10 @@ management:
 logging:
   file:
     path: log/${spring.application.name}/${POD_NAME:local_dev}
+  level:
+    com:
+      wecgwm:
+        youtube: ${YT_LOG_LEVEL:info}
 
 yt-dlp:
   path: ${YT_DLP_PATH:D:\\yt-dlp\\yt-dlp}

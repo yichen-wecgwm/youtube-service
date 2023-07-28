@@ -1,11 +1,11 @@
 package com.wecgwm;
 
-import com.wecgcm.youtube.YoutubeServiceApplication;
-import com.wecgcm.youtube.model.arg.MinioArg;
-import com.wecgcm.youtube.model.dto.ChannelDto;
-import com.wecgcm.youtube.service.MinioService;
-import com.wecgcm.youtube.service.YTDLPService;
-import com.wecgcm.youtube.service.impl.YouTubeVideoServiceImpl;
+import com.wecgwm.youtube.YoutubeServiceApplication;
+import com.wecgwm.youtube.model.arg.MinioArg;
+import com.wecgwm.youtube.model.dto.ChannelDto;
+import com.wecgwm.youtube.service.MinioService;
+import com.wecgwm.youtube.service.YTDLPService;
+import com.wecgwm.youtube.service.impl.YouTubeVideoServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;

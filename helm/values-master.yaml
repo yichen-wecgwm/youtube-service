@@ -71,6 +71,11 @@ env:
       configMapKeyRef:
         name: java-config
         key: YT_DLP_SEARCH_CNT
+  - name: YT_LOG_LEVEL
+    valueFrom:
+      configMapKeyRef:
+        name: java-config
+        key: YT_LOG_LEVEL
 
 #envFrom:
 #  - secretRef:
