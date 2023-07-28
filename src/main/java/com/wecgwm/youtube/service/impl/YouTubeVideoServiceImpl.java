@@ -16,6 +16,7 @@ import com.wecgwm.youtube.util.LogUtil;
 import com.wecgwm.youtube.util.MetricsUtil;
 import io.minio.ObjectWriteResponse;
 import io.vavr.control.Try;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
@@ -49,12 +50,12 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     @Value("${bilibili-service.url}")
     private String bilibiliServiceUrl;
 
-    private final ThreadPoolExecutor SCAN = new ThreadPoolExecutor(5, 10, 2, TimeUnit.MINUTES,
+    private @Getter static final ThreadPoolExecutor SCAN = new ThreadPoolExecutor(5, 10, 2, TimeUnit.MINUTES,
             new ArrayBlockingQueue<>(20), new ThreadFactoryBuilder().setNameFormat("yt-scan-%d").build());
-    private final ThreadPoolExecutor DOWNLOAD_AND_UPLOAD = new ThreadPoolExecutor(5, 20, 10, TimeUnit.MINUTES,
+    private static final ThreadPoolExecutor DOWNLOAD_AND_UPLOAD = new ThreadPoolExecutor(5, 20, 10, TimeUnit.MINUTES,
             new ArrayBlockingQueue<>(5), new ThreadFactoryBuilder().setNameFormat("yt-dl-up-%d").build());
 
-    {
+    static {
         MetricsUtil.threadMonitor(SCAN, "yt.scan");
         MetricsUtil.threadMonitor(DOWNLOAD_AND_UPLOAD, "yt.dl.up");
     }
@@ -64,7 +65,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
         return channelIdList.stream().map(channelId ->
                 CompletableFuture.completedStage(channelId)
                         .thenApplyAsync(cId -> minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object(String.valueOf(cId)), ChannelDto.class), SCAN)
-                        .thenApply(ytdlpService::search)
+                        .thenCompose(ytdlpService::search)
                         .thenApply(videoList ->
                                 videoList.stream().filter(minioService::tryLock).map(video ->
                                         CompletableFuture.completedStage(video)

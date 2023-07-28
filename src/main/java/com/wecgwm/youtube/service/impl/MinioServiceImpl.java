@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -33,6 +34,8 @@ public class MinioServiceImpl implements MinioService {
     private final MinioClient minioClient;
     @Value("${yt.lock-time-out-minute}")
     private int lockTimeOutMinute;
+    @Value("${yt.filter-upload-date}")
+    private int filterUploadDate;
 
     @Override
     public ObjectWriteResponse upload(String bucket, String object, String fileName, String contentType) {
@@ -128,6 +131,12 @@ public class MinioServiceImpl implements MinioService {
     @Override
     public boolean tryLock(VideoDto videoDto) {
         String videoId = videoDto.getVideoId();
+        if (videoDto.getUploadDate().plusDays(filterUploadDate).isBefore(LocalDate.now())) {
+            return false;
+        }
+        if (statObject(MinioArg.Archive.bucket(), MinioArg.Archive.object(videoDto.getVideoId())) != null) {
+            return false;
+        }
         String lockObject = MinioArg.Lock.object(videoId);
         StatObjectResponse resp = statObject(MinioArg.Lock.bucket(), lockObject);
         if (resp != null && resp.lastModified().plusMinutes(lockTimeOutMinute).isAfter(ZonedDateTime.now())) {
@@ -135,12 +144,13 @@ public class MinioServiceImpl implements MinioService {
             return false;
         }
         // todo concurrent not support yet
-        ObjectWriteResponse put = put(MinioArg.Lock.bucket(), lockObject, Thread.currentThread().getName());
-        if (put != null) {
-            return true;
+        ObjectWriteResponse putResp = put(MinioArg.Lock.bucket(), lockObject, Thread.currentThread().getName());
+        if (putResp == null) {
+            log.info("videoId:{}, lock fail", videoId);
+            return false;
         }
-        log.info("videoId:{}, lock fail", videoId);
-        return false;
+        log.info("lock success, thread:{}, videoId:{}", Thread.currentThread(), videoId);
+        return true;
     }
 
     @Override

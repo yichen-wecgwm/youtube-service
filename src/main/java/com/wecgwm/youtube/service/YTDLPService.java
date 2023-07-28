@@ -11,6 +11,7 @@ import io.vavr.control.Try;
 import org.slf4j.Logger;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 /**
@@ -23,7 +24,7 @@ public interface YTDLPService {
     /**
      * Search some videoId that have not been downloaded
      */
-    List<VideoDto> search(ChannelDto channel);
+    CompletableFuture<List<VideoDto>> search(ChannelDto channel);
 
     /**
      * @param videoId videoId e.g. JpTqSzm4JOk in www.youtube.com/watch?v=JpTqSzm4JOk

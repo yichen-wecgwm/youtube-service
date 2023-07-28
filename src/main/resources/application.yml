@@ -40,7 +40,7 @@ minio:
     secretKey: ${MINIO_SECRET_KEY}
 
 yt:
-  channel-id: ${YT_CHANNEL_ID:1}
+  channel-id: ${YT_CHANNEL_ID:1,2,3}
   schedule:
     enable: ${YT_SCHEDULE_ENABLE:false}
   scan:

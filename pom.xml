@@ -21,6 +21,7 @@
         <minio.version>8.5.4</minio.version>
         <okhttp.version>4.11.0</okhttp.version>
         <vavr.version>1.0.0-alpha-4</vavr.version>
+        <caffeine.version>3.1.7</caffeine.version>
     </properties>
 
     <dependencies>
@@ -69,6 +70,11 @@
             <groupId>io.vavr</groupId>
             <artifactId>vavr</artifactId>
             <version>${vavr.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>${caffeine.version}</version>
         </dependency>
     </dependencies>
 

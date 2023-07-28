@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.IntStream;
 
 /**
  * @author ：wecgwm
@@ -40,13 +41,21 @@ public class YoutubeServiceTest {
     private static final String videoId = "LsrJNUT0eTk";
     @Test
     public void scanAsyncTest(){
-        List<CompletableFuture<List<CompletableFuture<String>>>> completableFutures = youTubeVideoServiceImpl.scanAsync();
-        while (true) {
-            if (completableFutures.stream().allMatch(CompletableFuture::isDone)
-                    && completableFutures.stream().map(CompletableFuture::resultNow).filter(Objects::nonNull).flatMap(List::stream).allMatch(CompletableFuture::isDone)) {
-                break;
+        IntStream.range(0, 3).forEach(__ -> {
+            List<CompletableFuture<List<CompletableFuture<String>>>> completableFutures = youTubeVideoServiceImpl.scanAsync();
+            while (true) {
+                if (completableFutures.stream().allMatch(CompletableFuture::isDone)
+                        && completableFutures.stream().map(CompletableFuture::resultNow).filter(Objects::nonNull).flatMap(List::stream).allMatch(CompletableFuture::isDone)) {
+                    break;
+                }
             }
-        }
+            try {
+                Thread.sleep(Duration.of(3, ChronoUnit.SECONDS));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            log.info("should be cached............");
+        });
     }
 
     @Test
