@@ -62,6 +62,7 @@ public class YTDLPServiceImpl implements YTDLPService {
     public CompletableFuture<List<VideoDto>> search(ChannelDto channel) {
         List<String> args = ytdlpSearchArg.build(channel.getUrl());
         List<String> videoIdList = processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.inputReader()), "search");
+        // These videos are not dependent on each other
         List<CompletableFuture<VideoDto>> videoInfoList = videoIdList.stream().map(VIDEO_INFO_CACHE::get).toList();
         return CompletableFuture.allOf(videoInfoList.toArray(CompletableFuture[]::new))
                 .thenApply(__ -> videoInfoList.stream().map(CompletableFuture::join).toList());

@@ -1,6 +1,7 @@
 package com.wecgwm.youtube.service.impl;
 
 import com.wecgwm.youtube.config.ObjectMapperSingleton;
+import com.wecgwm.youtube.exception.LockException;
 import com.wecgwm.youtube.exception.MinioException;
 import com.wecgwm.youtube.model.arg.MinioArg;
 import com.wecgwm.youtube.model.dto.VideoDto;
@@ -21,6 +22,8 @@ import java.io.*;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 /**
@@ -129,28 +132,26 @@ public class MinioServiceImpl implements MinioService {
     }
 
     @Override
-    public boolean tryLock(VideoDto videoDto) {
+    public CompletionStage<VideoDto> tryLock(VideoDto videoDto) {
         String videoId = videoDto.getVideoId();
         if (videoDto.getUploadDate().plusDays(filterUploadDate).isBefore(LocalDate.now())) {
-            return false;
+            return CompletableFuture.failedStage(new LockException("expired date"));
         }
         if (statObject(MinioArg.Archive.bucket(), MinioArg.Archive.object(videoDto.getVideoId())) != null) {
-            return false;
+            return CompletableFuture.failedStage(new LockException("already download"));
         }
         String lockObject = MinioArg.Lock.object(videoId);
         StatObjectResponse resp = statObject(MinioArg.Lock.bucket(), lockObject);
         if (resp != null && resp.lastModified().plusMinutes(lockTimeOutMinute).isAfter(ZonedDateTime.now())) {
-            log.info("videoId:{}, lock not expired", videoId);
-            return false;
+            return CompletableFuture.failedStage(new LockException("lock not expired"));
         }
         // todo concurrent not support yet
         ObjectWriteResponse putResp = put(MinioArg.Lock.bucket(), lockObject, Thread.currentThread().getName());
         if (putResp == null) {
-            log.info("videoId:{}, lock fail", videoId);
-            return false;
+            return CompletableFuture.failedStage(new MinioException("put lock fail"));
         }
         log.info("lock success, thread:{}, videoId:{}", Thread.currentThread(), videoId);
-        return true;
+        return CompletableFuture.completedStage(videoDto);
     }
 
     @Override

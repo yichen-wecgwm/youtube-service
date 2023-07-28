@@ -20,10 +20,12 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -56,6 +58,24 @@ public class YoutubeServiceTest {
             }
             log.info("should be cached............");
         });
+    }
+
+    @Test
+    public void tempTest() throws InterruptedException, ExecutionException {
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8);
+        List<Integer> twoEvenSquares = numbers.stream().filter(n -> {
+            System.out.println("filtering " + n);
+            return n % 2 == 0;
+        }).map(n -> {
+            System.out.println("mapping " + n);
+            return n * n;
+        }).collect(Collectors.toList());
+
+
+        for(Integer i : twoEvenSquares)
+        {
+            System.out.println(i);
+        }
     }
 
     @Test

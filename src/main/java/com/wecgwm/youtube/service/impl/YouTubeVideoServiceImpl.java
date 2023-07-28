@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.wecgwm.youtube.config.ObjectMapperSingleton;
 import com.wecgwm.youtube.config.OkHttpClientConfig;
 import com.wecgwm.youtube.exception.HttpException;
+import com.wecgwm.youtube.exception.LockException;
 import com.wecgwm.youtube.model.arg.MinioArg;
 import com.wecgwm.youtube.model.arg.YTDLPDownloadArg;
 import com.wecgwm.youtube.model.dto.ChannelDto;
@@ -67,11 +68,21 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                         .thenApplyAsync(cId -> minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object(String.valueOf(cId)), ChannelDto.class), SCAN)
                         .thenCompose(ytdlpService::search)
                         .thenApply(videoList ->
-                                videoList.stream().filter(minioService::tryLock).map(video ->
+                                videoList.stream().map(video ->
                                         CompletableFuture.completedStage(video)
-                                                .thenAcceptAsync(this::uploadVideoTitle, DOWNLOAD_AND_UPLOAD)
-                                                .thenCombine(this.download(video.getVideoId()), (__, ___) -> uploadToBilibili(video.getVideoId()))
-                                                .exceptionally(e -> minioService.unlock(video.getVideoId(), e))
+                                                .thenComposeAsync(minioService::tryLock, DOWNLOAD_AND_UPLOAD)
+                                                .thenCompose(videoDto ->
+                                                    CompletableFuture.completedStage(videoDto)
+                                                            .thenAccept(this::uploadVideoTitle)
+                                                            .thenCombine(this.download(videoDto.getVideoId()), (__, ___) -> uploadToBilibili(video.getVideoId()))
+                                                            .exceptionally(e -> minioService.unlock(video.getVideoId(), e))
+                                                )
+                                                .exceptionally(e -> {
+                                                    if (e.getCause() != null && e.getCause() instanceof LockException) {
+                                                        return video.getVideoId();
+                                                    }
+                                                    return LogUtil.<String>completionExceptionally().apply(e);
+                                                })
                                                 .toCompletableFuture()
                                 ).toList()
                         )

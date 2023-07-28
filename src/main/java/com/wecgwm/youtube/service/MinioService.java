@@ -4,6 +4,8 @@ import com.wecgwm.youtube.model.dto.VideoDto;
 import io.minio.ObjectWriteResponse;
 import io.minio.StatObjectResponse;
 
+import java.util.concurrent.CompletionStage;
+
 public interface MinioService {
 
     ObjectWriteResponse upload(String bucket, String object, String fileName, String contentType);
@@ -16,7 +18,7 @@ public interface MinioService {
 
     <T> T readJson(String bucket, String object, Class<T> clazz);
 
-    boolean tryLock(VideoDto videoDto);
+    CompletionStage<VideoDto> tryLock(VideoDto videoDto);
 
     <T> T unlock(String videoId, Throwable throwable);
 }
