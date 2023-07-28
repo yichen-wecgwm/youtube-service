@@ -20,10 +20,9 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.function.Predicate;
+import java.util.Map;
 import java.util.stream.Stream;
 
 
@@ -39,7 +38,7 @@ public class YTDLPServiceImpl implements YTDLPService {
     private final YTDLPSearchArg ytdlpSearchArg;
     private final YTDLPVideoPrintArg ytdlpVideoPrintArg;
     private final MinioService minioService;
-    private final Set<String> expireDateVideoId = new HashSet<>();
+    private final Map<String, VideoDto> videoCache = new HashMap<>();
     private static final String TITLE = "title";
     private static final String UPLOAD_DATE = "upload_date";
 
@@ -72,14 +71,13 @@ public class YTDLPServiceImpl implements YTDLPService {
 
     private List<VideoDto> takeVideoId(List<String> videoIdList) {
         List<VideoDto> ret = videoIdList.stream()
-                .filter(Predicate.not(expireDateVideoId::contains))
-                .map(id -> {
-                    List<String> videoInfo = getVideoInfo(id, TITLE, UPLOAD_DATE);
-                    return new VideoDto(id, videoInfo.get(0), LocalDate.parse(videoInfo.get(1), DateTimeFormatter.ofPattern("yyyyMMdd")));
-                })
+                .map(id -> videoCache.computeIfAbsent(id, key -> {
+                            List<String> videoInfo = getVideoInfo(id, TITLE, UPLOAD_DATE);
+                            return new VideoDto(id, videoInfo.get(0), LocalDate.parse(videoInfo.get(1), DateTimeFormatter.ofPattern("yyyyMMdd")));
+                        })
+                )
                 .filter(videoDto -> {
                     if (videoDto.getUploadDate().plusDays(filterUploadDate).isBefore(LocalDate.now())) {
-                        expireDateVideoId.add(videoDto.getVideoId());
                         return false;
                     }
                     return minioService.statObject(MinioArg.Archive.bucket(), MinioArg.Archive.object(videoDto.getVideoId())) == null;
