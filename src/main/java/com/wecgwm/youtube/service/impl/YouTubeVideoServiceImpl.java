@@ -67,25 +67,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                 CompletableFuture.completedStage(channelId)
                         .thenApplyAsync(cId -> minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object(String.valueOf(cId)), ChannelDto.class), SCAN)
                         .thenCompose(ytdlpService::search)
-                        .thenApply(videoList ->
-                                videoList.stream().map(video ->
-                                        CompletableFuture.completedStage(video)
-                                                .thenComposeAsync(minioService::tryLock, DOWNLOAD_AND_UPLOAD)
-                                                .thenCompose(videoDto ->
-                                                    CompletableFuture.completedStage(videoDto)
-                                                            .thenAccept(this::uploadVideoTitle)
-                                                            .thenCombine(this.download(videoDto.getVideoId()), (__, ___) -> uploadToBilibili(video.getVideoId()))
-                                                            .exceptionally(e -> minioService.unlock(video.getVideoId(), e))
-                                                )
-                                                .exceptionally(e -> {
-                                                    if (e.getCause() != null && e.getCause() instanceof LockException) {
-                                                        return video.getVideoId();
-                                                    }
-                                                    return LogUtil.<String>completionExceptionally().apply(e);
-                                                })
-                                                .toCompletableFuture()
-                                ).toList()
-                        )
+                        .thenApply(videoList -> videoList.stream().map(this::processVideoAsync).toList())
                         .exceptionally(LogUtil.completionExceptionally())
                         .toCompletableFuture()
         ).toList();
@@ -100,7 +82,24 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
                 .exceptionally(e -> minioService.unlock(videoId, e));
     }
 
-    private void uploadVideoTitle(VideoDto video){
+    private CompletableFuture<String> processVideoAsync(VideoDto video) {
+        return CompletableFuture.completedStage(video)
+                .thenComposeAsync(minioService::tryLock, DOWNLOAD_AND_UPLOAD)
+                .thenCompose(videoDto -> CompletableFuture.completedStage(videoDto)
+                        .thenAccept(this::uploadVideoTitle)
+                        .thenCombine(this.download(videoDto.getVideoId()), (__, ___) -> uploadToBilibili(video.getVideoId()))
+                        .exceptionally(e -> minioService.unlock(video.getVideoId(), e))
+                )
+                .exceptionally(e -> {
+                    if (e.getCause() != null && e.getCause() instanceof LockException) {
+                        return video.getVideoId();
+                    }
+                    return LogUtil.<String>completionExceptionally().apply(e);
+                })
+                .toCompletableFuture();
+    }
+
+    private void uploadVideoTitle(VideoDto video) {
         minioService.put(MinioArg.Title.bucket(),
                 MinioArg.Title.object(video.getVideoId()),
                 video.getTitle());
