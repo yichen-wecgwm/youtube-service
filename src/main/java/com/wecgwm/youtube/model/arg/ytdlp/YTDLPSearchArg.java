@@ -1,4 +1,4 @@
-package com.wecgwm.youtube.model.arg;
+package com.wecgwm.youtube.model.arg.ytdlp;
 
 import com.google.common.collect.ImmutableList;
 import lombok.extern.slf4j.Slf4j;
@@ -11,10 +11,9 @@ import java.util.List;
  * @author ：wecgwm
  * @date ：2023/07/18 23:28
  */
-@SuppressWarnings("SpellCheckingInspection")
 @Slf4j
 @Component
-public class YTDLPSearchArg extends YTDLPArg{
+public final class YTDLPSearchArg extends YTDLPArg{
     @Value("${yt-dlp.search.cnt}")
     private String cnt;
     private static final String CNT_OP = "-I";

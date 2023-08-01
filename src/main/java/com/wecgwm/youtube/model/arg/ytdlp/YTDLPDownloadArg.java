@@ -1,4 +1,4 @@
-package com.wecgwm.youtube.model.arg;
+package com.wecgwm.youtube.model.arg.ytdlp;
 
 import com.google.common.collect.ImmutableList;
 import lombok.extern.slf4j.Slf4j;
@@ -10,10 +10,9 @@ import java.util.List;
  * @author ：wecgwm
  * @date ：2023/07/18 23:28
  */
-@SuppressWarnings("SpellCheckingInspection")
 @Slf4j
 @Component
-public class YTDLPDownloadArg extends YTDLPArg{
+public final class YTDLPDownloadArg extends YTDLPArg{
 
     public List<String> build(String videoId) {
         return ImmutableList.<String>builder()

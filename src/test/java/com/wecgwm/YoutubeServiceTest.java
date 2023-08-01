@@ -1,8 +1,13 @@
 package com.wecgwm;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.wecgwm.youtube.YoutubeServiceApplication;
-import com.wecgwm.youtube.model.arg.MinioArg;
+import com.wecgwm.youtube.config.ObjectMapperSingleton;
+import com.wecgwm.youtube.model.arg.minio.MinioChannelArg;
+import com.wecgwm.youtube.model.arg.minio.MinioVideoInfoArg;
 import com.wecgwm.youtube.model.dto.ChannelDto;
+import com.wecgwm.youtube.model.dto.VideoInfoDto;
 import com.wecgwm.youtube.service.MinioService;
 import com.wecgwm.youtube.service.YTDLPService;
 import com.wecgwm.youtube.service.impl.YouTubeVideoServiceImpl;
@@ -12,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.util.ReflectionUtils;
+import org.springframework.util.StopWatch;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -19,13 +25,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
+import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
 /**
@@ -42,40 +46,32 @@ public class YoutubeServiceTest {
 
     private static final String videoId = "LsrJNUT0eTk";
     @Test
-    public void scanAsyncTest(){
-        IntStream.range(0, 3).forEach(__ -> {
-            List<CompletableFuture<List<CompletableFuture<String>>>> completableFutures = youTubeVideoServiceImpl.scanAsync();
+    public void scanAsyncTest() throws InterruptedException {
+        StopWatch stopWatch = new StopWatch();
+        IntStream.range(0, 1).forEach(__ -> {
+            stopWatch.start(String.valueOf(__));
+            CompletableFuture<List<CompletableFuture<List<CompletableFuture<String>>>>> ret = youTubeVideoServiceImpl.scanAsync();
             while (true) {
-                if (completableFutures.stream().allMatch(CompletableFuture::isDone)
-                        && completableFutures.stream().map(CompletableFuture::resultNow).filter(Objects::nonNull).flatMap(List::stream).allMatch(CompletableFuture::isDone)) {
+                if (ret.isDone() && ret.resultNow().stream().allMatch(CompletableFuture::isDone)
+                    && ret.resultNow().stream().map(CompletableFuture::resultNow).filter(Objects::nonNull).flatMap(List::stream).allMatch(CompletableFuture::isDone)) {
+                    stopWatch.stop();
                     break;
                 }
             }
-            try {
-                Thread.sleep(Duration.of(3, ChronoUnit.SECONDS));
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+//            try {
+//                Thread.sleep(Duration.of(3, ChronoUnit.SECONDS));
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
             log.info("should be cached............");
         });
+        Thread.sleep(Duration.ofMinutes(30));
+        log.info(stopWatch.prettyPrint());
     }
 
     @Test
-    public void tempTest() throws InterruptedException, ExecutionException {
-        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8);
-        List<Integer> twoEvenSquares = numbers.stream().filter(n -> {
-            System.out.println("filtering " + n);
-            return n % 2 == 0;
-        }).map(n -> {
-            System.out.println("mapping " + n);
-            return n * n;
-        }).collect(Collectors.toList());
-
-
-        for(Integer i : twoEvenSquares)
-        {
-            System.out.println(i);
-        }
+    public void tempTest() throws InterruptedException, ExecutionException, JsonProcessingException {
+        log.info(ObjectMapperSingleton.INSTANCE.writeValueAsString(new VideoInfoDto("123", "356", LocalDate.now(), List.of("1", "5"))));
     }
 
     @Test
@@ -85,17 +81,19 @@ public class YoutubeServiceTest {
 
     @Test
     public void putTitleTest() throws InterruptedException {
-        minioService.put(MinioArg.Title.bucket(), MinioArg.Title.object(videoId), "from unit test");
+        minioService.put(MinioVideoInfoArg.bucket(), MinioVideoInfoArg.object(videoId), "from unit test");
     }
 
     @Test
     public void removeTest() throws InterruptedException {
-        minioService.remove(MinioArg.Title.bucket(), MinioArg.Title.object(videoId));
+        minioService.remove(MinioVideoInfoArg.bucket(), MinioVideoInfoArg.object(videoId));
     }
 
     @Test
     public void getChannelInfoTest(){
-        log.info(minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object("1"), ChannelDto.class).toString());
+        log.info(minioService.readJson(MinioChannelArg.bucket(), "1.json", ChannelDto.class).toString());
+        log.info(minioService.readJson(MinioChannelArg.bucket(), MinioChannelArg.object(), new TypeReference<List<ChannelDto>>() {
+        }).toString());
     }
 
     @Test
@@ -103,7 +101,7 @@ public class YoutubeServiceTest {
         List.of(1).forEach(channelId ->{
                     try {
                         CompletableFuture.completedStage(channelId)
-                                        .thenApply(cId -> minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object(String.valueOf(cId)), ChannelDto.class))
+                                        .thenApply(cId -> minioService.readJson(MinioChannelArg.bucket(), MinioChannelArg.object(), ChannelDto.class))
                                         .thenApply(ytdlpService::search).toCompletableFuture()
                                         .get();
                     } catch (InterruptedException | ExecutionException e) {
@@ -115,8 +113,8 @@ public class YoutubeServiceTest {
 
     @Test
     public void statObjectTest() {
-        log.info(String.valueOf(minioService.statObject(MinioArg.Title.bucket(), "AdLrsE9d9aI/title")));
-        log.info(String.valueOf(minioService.statObject(MinioArg.Title.bucket(), "AdLrsE9d9aI/title2")));
+        log.info(String.valueOf(minioService.statObject(MinioVideoInfoArg.bucket(), "AdLrsE9d9aI/title")));
+        log.info(String.valueOf(minioService.statObject(MinioVideoInfoArg.bucket(), "AdLrsE9d9aI/title2")));
     }
 
     @Test

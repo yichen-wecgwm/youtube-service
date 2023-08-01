@@ -2,7 +2,7 @@ package com.wecgwm.youtube.service;
 
 import com.wecgwm.youtube.exception.YTDLPException;
 import com.wecgwm.youtube.model.dto.ChannelDto;
-import com.wecgwm.youtube.model.dto.VideoDto;
+import com.wecgwm.youtube.model.dto.VideoInfoDto;
 import com.wecgwm.youtube.util.LogUtil;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
@@ -24,7 +24,7 @@ public interface YTDLPService {
     /**
      * Search some videoId that have not been downloaded
      */
-    CompletableFuture<List<VideoDto>> search(ChannelDto channel);
+    CompletableFuture<List<VideoInfoDto>> search(ChannelDto channel);
 
     /**
      * @param videoId videoId e.g. JpTqSzm4JOk in www.youtube.com/watch?v=JpTqSzm4JOk

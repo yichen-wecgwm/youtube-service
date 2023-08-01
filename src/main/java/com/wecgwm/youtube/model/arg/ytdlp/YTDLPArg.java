@@ -1,4 +1,4 @@
-package com.wecgwm.youtube.model.arg;
+package com.wecgwm.youtube.model.arg.ytdlp;
 
 import org.springframework.beans.factory.annotation.Value;
 
@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
  * @date ：2023/07/18 23:28
  */
 @SuppressWarnings("SpellCheckingInspection")
-public class YTDLPArg {
+public sealed class YTDLPArg permits YTDLPDownloadArg, YTDLPSearchArg, YTDLPVideoPrintArg {
     static final String VIDEO_URL_PREFIX = "https://www.youtube.com/watch?v=";
     static final String WRITE_THUMBNAIL = "--write-thumbnail";
     static final String THUMBNAILS_FORMAT_OP = "--convert-thumbnails";

@@ -31,7 +31,7 @@ public class YoutubeVideoController {
 
     @PostMapping("/download")
     public Response<String> download(@RequestBody @Valid YoutubeVideoRequest request){
-        youTubeVideoService.download(request.getVideoId());
+        youTubeVideoService.download(request.videoId());
         return Response.ok();
     }
 

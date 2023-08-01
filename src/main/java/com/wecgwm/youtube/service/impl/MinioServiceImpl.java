@@ -1,10 +1,12 @@
 package com.wecgwm.youtube.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.wecgwm.youtube.config.ObjectMapperSingleton;
 import com.wecgwm.youtube.exception.LockException;
 import com.wecgwm.youtube.exception.MinioException;
-import com.wecgwm.youtube.model.arg.MinioArg;
-import com.wecgwm.youtube.model.dto.VideoDto;
+import com.wecgwm.youtube.model.arg.minio.MinioArchiveArg;
+import com.wecgwm.youtube.model.arg.minio.MinioLockArg;
+import com.wecgwm.youtube.model.dto.VideoInfoDto;
 import com.wecgwm.youtube.service.MinioService;
 import com.wecgwm.youtube.util.LogUtil;
 import io.micrometer.core.instrument.Metrics;
@@ -19,6 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
+import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.Objects;
@@ -113,6 +116,49 @@ public class MinioServiceImpl implements MinioService {
 
     @Override
     public <T> T readJson(String bucket, String object, Class<T> clazz) {
+        return readJson(bucket, object, (Type) clazz);
+    }
+
+    @Override
+    public <T> T readJson(String bucket, String object, TypeReference<T> valueTypeRef) {
+        return readJson(bucket, object, valueTypeRef.getType());
+    }
+
+    @Override
+    public CompletionStage<Void> tryLock(VideoInfoDto videoInfoDto) {
+        // todo test
+        if (videoInfoDto.videoId().equals("EW0IPfC_il8")) {
+            return CompletableFuture.completedStage(null);
+        }
+        String videoId = videoInfoDto.videoId();
+        if (videoInfoDto.uploadDate().plusDays(filterUploadDate).isBefore(LocalDate.now())) {
+            return CompletableFuture.failedStage(new LockException("expired date"));
+        }
+        if (statObject(MinioArchiveArg.bucket(), MinioArchiveArg.object(videoInfoDto.videoId())) != null) {
+            return CompletableFuture.failedStage(new LockException("already download"));
+        }
+        String lockObject = MinioLockArg.object(videoId);
+        StatObjectResponse resp = statObject(MinioLockArg.bucket(), lockObject);
+        if (resp != null && resp.lastModified().plusMinutes(lockTimeOutMinute).isAfter(ZonedDateTime.now())) {
+            return CompletableFuture.failedStage(new LockException("lock not expired"));
+        }
+        // todo concurrent not support yet
+        ObjectWriteResponse putResp = put(MinioLockArg.bucket(), lockObject, Thread.currentThread().getName());
+        if (putResp == null) {
+            return CompletableFuture.failedStage(new MinioException("put lock fail"));
+        }
+        log.info("lock success, thread:{}, videoId:{}", Thread.currentThread(), videoId);
+        return CompletableFuture.completedStage(null);
+    }
+
+    @Override
+    public <T> T unlock(String videoId, Throwable throwable) {
+        // TODO concurrent not support yet
+        remove(MinioLockArg.bucket(), MinioLockArg.object(videoId));
+        return LogUtil.<T>completionExceptionally().apply(throwable);
+    }
+
+    private <T> T readJson(String bucket, String object, Type type){
         InputStream resp = Try.of(() -> GetObjectArgs
                         .builder()
                         .bucket(bucket)
@@ -125,40 +171,10 @@ public class MinioServiceImpl implements MinioService {
         return Try.success(bufferedReader)
                 .mapTry(BufferedReader::lines)
                 .mapTry(lines -> lines.collect(Collectors.joining()))
-                .mapTry(json -> ObjectMapperSingleton.INSTANCE.readValue(json, clazz))
+                .mapTry(json -> ObjectMapperSingleton.INSTANCE.<T>readValue(json, ObjectMapperSingleton.INSTANCE.getTypeFactory().constructType(type)))
                 .andThenTry(ret -> log.info("read json done, thread:{}, bucket: {}, object:{}, content:{}", Thread.currentThread(), bucket, object, ret))
                 .andFinallyTry(bufferedReader::close)
                 .getOrElseThrow(MinioException::new);
-    }
-
-    @Override
-    public CompletionStage<VideoDto> tryLock(VideoDto videoDto) {
-        String videoId = videoDto.getVideoId();
-        if (videoDto.getUploadDate().plusDays(filterUploadDate).isBefore(LocalDate.now())) {
-            return CompletableFuture.failedStage(new LockException("expired date"));
-        }
-        if (statObject(MinioArg.Archive.bucket(), MinioArg.Archive.object(videoDto.getVideoId())) != null) {
-            return CompletableFuture.failedStage(new LockException("already download"));
-        }
-        String lockObject = MinioArg.Lock.object(videoId);
-        StatObjectResponse resp = statObject(MinioArg.Lock.bucket(), lockObject);
-        if (resp != null && resp.lastModified().plusMinutes(lockTimeOutMinute).isAfter(ZonedDateTime.now())) {
-            return CompletableFuture.failedStage(new LockException("lock not expired"));
-        }
-        // todo concurrent not support yet
-        ObjectWriteResponse putResp = put(MinioArg.Lock.bucket(), lockObject, Thread.currentThread().getName());
-        if (putResp == null) {
-            return CompletableFuture.failedStage(new MinioException("put lock fail"));
-        }
-        log.info("lock success, thread:{}, videoId:{}", Thread.currentThread(), videoId);
-        return CompletableFuture.completedStage(videoDto);
-    }
-
-    @Override
-    public <T> T unlock(String videoId, Throwable throwable) {
-        // TODO concurrent not support yet
-        remove(MinioArg.Lock.bucket(), MinioArg.Lock.object(videoId));
-        return LogUtil.<T>completionExceptionally().apply(throwable);
     }
 
 }

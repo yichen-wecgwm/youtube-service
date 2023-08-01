@@ -1,14 +1,15 @@
 package com.wecgwm.youtube.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.wecgwm.youtube.config.ObjectMapperSingleton;
 import com.wecgwm.youtube.config.OkHttpClientConfig;
 import com.wecgwm.youtube.exception.HttpException;
 import com.wecgwm.youtube.exception.LockException;
-import com.wecgwm.youtube.model.arg.MinioArg;
-import com.wecgwm.youtube.model.arg.YTDLPDownloadArg;
+import com.wecgwm.youtube.model.arg.minio.*;
+import com.wecgwm.youtube.model.arg.ytdlp.YTDLPDownloadArg;
 import com.wecgwm.youtube.model.dto.ChannelDto;
-import com.wecgwm.youtube.model.dto.VideoDto;
+import com.wecgwm.youtube.model.dto.VideoInfoDto;
 import com.wecgwm.youtube.model.req.BilibiliUploadRequest;
 import com.wecgwm.youtube.service.MinioService;
 import com.wecgwm.youtube.service.YTDLPService;
@@ -19,6 +20,7 @@ import io.minio.ObjectWriteResponse;
 import io.vavr.control.Try;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
@@ -44,65 +46,63 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     private final MinioService minioService;
     private final OkHttpClient okHttpClient;
     private static final String BILIBILI_VIDEO_UPLOAD_PATH = "/video/upload";
-
-    @SuppressWarnings({"unused", "MismatchedQueryAndUpdateOfCollection"})
-    @Value("#{'${yt.channel-id}'.split(',')}")
-    private List<Integer> channelIdList;
     @Value("${bilibili-service.url}")
     private String bilibiliServiceUrl;
 
-    private @Getter static final ThreadPoolExecutor SCAN = new ThreadPoolExecutor(5, 10, 2, TimeUnit.MINUTES,
-            new ArrayBlockingQueue<>(20), new ThreadFactoryBuilder().setNameFormat("yt-scan-%d").build());
+    private @Getter static final ThreadPoolExecutor SCAN = new ThreadPoolExecutor(5, 50, 2, TimeUnit.MINUTES,
+            new SynchronousQueue<>(), new ThreadFactoryBuilder().setNameFormat("yt-scan-%d").build());
     private static final ThreadPoolExecutor DOWNLOAD_AND_UPLOAD = new ThreadPoolExecutor(5, 20, 10, TimeUnit.MINUTES,
-            new ArrayBlockingQueue<>(5), new ThreadFactoryBuilder().setNameFormat("yt-dl-up-%d").build());
+            new SynchronousQueue<>(), new ThreadFactoryBuilder().setNameFormat("yt-dl-up-%d").build());
 
     static {
+        SCAN.prestartAllCoreThreads();
+        DOWNLOAD_AND_UPLOAD.prestartAllCoreThreads();
         MetricsUtil.threadMonitor(SCAN, "yt.scan");
         MetricsUtil.threadMonitor(DOWNLOAD_AND_UPLOAD, "yt.dl.up");
     }
 
     @Override
-    public List<CompletableFuture<List<CompletableFuture<String>>>> scanAsync() {
-        return channelIdList.stream().map(channelId ->
-                CompletableFuture.completedStage(channelId)
-                        .thenApplyAsync(cId -> minioService.readJson(MinioArg.Channel.bucket(), MinioArg.Channel.object(String.valueOf(cId)), ChannelDto.class), SCAN)
-                        .thenCompose(ytdlpService::search)
-                        .thenApply(videoList -> videoList.stream().map(this::processVideoAsync).toList())
-                        .exceptionally(LogUtil.completionExceptionally())
-                        .toCompletableFuture()
-        ).toList();
+    public CompletableFuture<List<CompletableFuture<List<CompletableFuture<String>>>>> scanAsync() {
+        return CompletableFuture.supplyAsync(() -> minioService.readJson(MinioChannelArg.bucket(), MinioChannelArg.object(), new TypeReference<List<ChannelDto>>() {})
+                .stream().filter(ChannelDto::enable).map(channel ->
+                        CompletableFuture.completedStage(channel)
+                                .thenComposeAsync(ytdlpService::search, SCAN)
+                                .thenApply(videoList -> videoList.stream().map(this::processVideoAsync).toList())
+                                .exceptionally(LogUtil.completionExceptionally())
+                                .toCompletableFuture()).toList(), SCAN);
     }
 
     @Override
     public CompletionStage<ObjectWriteResponse> download(String videoId) {
         return CompletableFuture.completedStage(videoId)
                 .thenAcceptAsync(ytdlpService::download, DOWNLOAD_AND_UPLOAD)
-                .thenApply(__ -> minioService.upload(MinioArg.Video.bucket(), MinioArg.Video.object(videoId), YTDLPDownloadArg.videoPath(videoId), MinioArg.VIDEO_TYPE))
-                .thenApply(__ -> minioService.upload(MinioArg.Thumbnail.bucket(), MinioArg.Thumbnail.object(videoId), YTDLPDownloadArg.thumbnailPath(videoId), MinioArg.IMG_TYPE))
+                .thenApply(__ -> minioService.upload(MinioVideoArg.bucket(), MinioVideoArg.object(videoId), YTDLPDownloadArg.videoPath(videoId), MinioArg.VIDEO_TYPE))
+                .thenApply(__ -> minioService.upload(MinioThumbnailArg.bucket(), MinioThumbnailArg.object(videoId), YTDLPDownloadArg.thumbnailPath(videoId), MinioArg.IMG_TYPE))
                 .exceptionally(e -> minioService.unlock(videoId, e));
     }
 
-    private CompletableFuture<String> processVideoAsync(VideoDto video) {
-        return CompletableFuture.completedStage(video)
+    private CompletableFuture<String> processVideoAsync(VideoInfoDto videoInfo) {
+        return CompletableFuture.completedStage(videoInfo)
                 .thenComposeAsync(minioService::tryLock, DOWNLOAD_AND_UPLOAD)
-                .thenCompose(videoDto -> CompletableFuture.completedStage(videoDto)
-                        .thenAccept(this::uploadVideoTitle)
-                        .thenCombine(this.download(videoDto.getVideoId()), (__, ___) -> uploadToBilibili(video.getVideoId()))
-                        .exceptionally(e -> minioService.unlock(video.getVideoId(), e))
+                .thenCompose(__ -> CompletableFuture.completedStage(videoInfo)
+                        .thenAccept(this::uploadVideoInfo)
+                        .thenCombine(this.download(videoInfo.videoId()), (___, ____) -> uploadToBilibili(videoInfo.videoId()))
+                        .exceptionally(e -> minioService.unlock(videoInfo.videoId(), e))
                 )
                 .exceptionally(e -> {
                     if (e.getCause() != null && e.getCause() instanceof LockException) {
-                        return video.getVideoId();
+                        return videoInfo.videoId();
                     }
                     return LogUtil.<String>completionExceptionally().apply(e);
                 })
                 .toCompletableFuture();
     }
 
-    private void uploadVideoTitle(VideoDto video) {
-        minioService.put(MinioArg.Title.bucket(),
-                MinioArg.Title.object(video.getVideoId()),
-                video.getTitle());
+    @SneakyThrows
+    private void uploadVideoInfo(VideoInfoDto videoInfo) {
+        minioService.put(MinioVideoInfoArg.bucket(),
+                MinioVideoInfoArg.object(videoInfo.videoId()),
+                ObjectMapperSingleton.INSTANCE.writeValueAsString(videoInfo));
     }
 
     private String uploadToBilibili(String videoId) {

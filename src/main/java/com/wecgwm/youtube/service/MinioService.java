@@ -1,6 +1,7 @@
 package com.wecgwm.youtube.service;
 
-import com.wecgwm.youtube.model.dto.VideoDto;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.wecgwm.youtube.model.dto.VideoInfoDto;
 import io.minio.ObjectWriteResponse;
 import io.minio.StatObjectResponse;
 
@@ -18,7 +19,9 @@ public interface MinioService {
 
     <T> T readJson(String bucket, String object, Class<T> clazz);
 
-    CompletionStage<VideoDto> tryLock(VideoDto videoDto);
+    <T> T readJson(String bucket, String object, TypeReference<T> valueTypeRef);
+
+    CompletionStage<Void> tryLock(VideoInfoDto videoInfoDto);
 
     <T> T unlock(String videoId, Throwable throwable);
 }
