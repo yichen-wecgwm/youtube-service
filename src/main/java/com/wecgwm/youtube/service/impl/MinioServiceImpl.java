@@ -126,10 +126,6 @@ public class MinioServiceImpl implements MinioService {
 
     @Override
     public CompletionStage<Void> tryLock(VideoInfoDto videoInfoDto) {
-        // todo test
-        if (videoInfoDto.videoId().equals("EW0IPfC_il8")) {
-            return CompletableFuture.completedStage(null);
-        }
         String videoId = videoInfoDto.videoId();
         if (videoInfoDto.uploadDate().plusDays(filterUploadDate).isBefore(LocalDate.now())) {
             return CompletableFuture.failedStage(new LockException("expired date"));
