@@ -49,8 +49,8 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
     @Value("${bilibili-service.url}")
     private String bilibiliServiceUrl;
 
-    private @Getter static final ThreadPoolExecutor SCAN = new ThreadPoolExecutor(5, 50, 2, TimeUnit.MINUTES,
-            new SynchronousQueue<>(), new ThreadFactoryBuilder().setNameFormat("yt-scan-%d").build());
+    private @Getter static final ThreadPoolExecutor SCAN = new ThreadPoolExecutor(5, 30, 2, TimeUnit.MINUTES,
+            new ArrayBlockingQueue<>(10), new ThreadFactoryBuilder().setNameFormat("yt-scan-%d").build());
     private static final ThreadPoolExecutor DOWNLOAD_AND_UPLOAD = new ThreadPoolExecutor(5, 20, 10, TimeUnit.MINUTES,
             new SynchronousQueue<>(), new ThreadFactoryBuilder().setNameFormat("yt-dl-up-%d").build());
 
