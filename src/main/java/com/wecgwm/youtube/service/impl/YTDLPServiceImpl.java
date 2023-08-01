@@ -1,13 +1,13 @@
 package com.wecgwm.youtube.service.impl;
 
-import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
+import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.wecgwm.youtube.exception.YTDLPException;
-import com.wecgwm.youtube.model.arg.YTDLPDownloadArg;
-import com.wecgwm.youtube.model.arg.YTDLPSearchArg;
-import com.wecgwm.youtube.model.arg.YTDLPVideoPrintArg;
+import com.wecgwm.youtube.model.arg.ytdlp.YTDLPDownloadArg;
+import com.wecgwm.youtube.model.arg.ytdlp.YTDLPSearchArg;
+import com.wecgwm.youtube.model.arg.ytdlp.YTDLPVideoPrintArg;
 import com.wecgwm.youtube.model.dto.ChannelDto;
-import com.wecgwm.youtube.model.dto.VideoDto;
+import com.wecgwm.youtube.model.dto.VideoInfoDto;
 import com.wecgwm.youtube.service.YTDLPService;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
@@ -23,7 +23,8 @@ import java.io.BufferedReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 
@@ -40,15 +41,12 @@ public class YTDLPServiceImpl implements YTDLPService {
     private final YTDLPVideoPrintArg ytdlpVideoPrintArg;
     private static final String TITLE = "title";
     private static final String UPLOAD_DATE = "upload_date";
-    private final AsyncLoadingCache<String, VideoDto> VIDEO_INFO_CACHE = Caffeine.newBuilder()
+    private final AsyncCache<String, VideoInfoDto> VIDEO_INFO_CACHE = Caffeine.newBuilder()
             .recordStats(() -> new CaffeineStatsCounter(Metrics.globalRegistry, "video_info"))
             .maximumSize(10_00)
             .expireAfterAccess(8, TimeUnit.MINUTES)
             .executor(YouTubeVideoServiceImpl.getSCAN())
-            .buildAsync((key, executor) -> CompletableFuture.supplyAsync(() -> {
-                List<String> videoInfo = getVideoInfo(key, TITLE, UPLOAD_DATE);
-                return new VideoDto(key, videoInfo.get(0), LocalDate.parse(videoInfo.get(1), DateTimeFormatter.ofPattern("yyyyMMdd")));
-            }, executor));
+            .buildAsync();
 
     {
         Gauge.builder("cache.size", VIDEO_INFO_CACHE, cache -> cache.asMap().size())
@@ -57,15 +55,18 @@ public class YTDLPServiceImpl implements YTDLPService {
                 .register(Metrics.globalRegistry);
     }
 
-
     @Override
-    public CompletableFuture<List<VideoDto>> search(ChannelDto channel) {
-        List<String> args = ytdlpSearchArg.build(channel.getUrl());
+    public CompletableFuture<List<VideoInfoDto>> search(ChannelDto channel) {
+        List<String> args = ytdlpSearchArg.build(channel.url());
         List<String> videoIdList = processTemplate(() -> new ProcessBuilder(args), process -> readPrint(process.inputReader()), "search");
-        // These videos are not dependent on each other
-        List<CompletableFuture<VideoDto>> videoInfoList = videoIdList.stream().map(VIDEO_INFO_CACHE::get).toList();
+        List<CompletableFuture<VideoInfoDto>> videoInfoList = videoIdList.stream()
+                .map(vId -> VIDEO_INFO_CACHE.get(vId, (key, executor) -> CompletableFuture.supplyAsync(() -> {
+                    List<String> videoInfo = getVideoInfo(key, TITLE, UPLOAD_DATE);
+                    return new VideoInfoDto(key, videoInfo.get(0), LocalDate.parse(videoInfo.get(1), DateTimeFormatter.ofPattern("yyyyMMdd")), channel.ext());
+                }, executor))).toList();
+        // see LocalAsyncCache#composeResult
         return CompletableFuture.allOf(videoInfoList.toArray(CompletableFuture[]::new))
-                .thenApply(__ -> videoInfoList.stream().map(CompletableFuture::join).toList());
+                .thenApply(__ -> videoInfoList.stream().map(CompletableFuture::resultNow).toList());
     }
 
     @Override
