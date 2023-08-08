@@ -36,11 +36,6 @@ env:
       configMapKeyRef:
         name: java-config
         key: MINIO_SECRET_KEY
-  - name: YT_CHANNEL_ID
-    valueFrom:
-      configMapKeyRef:
-        name: java-config
-        key: YT_CHANNEL_ID
   - name: YT_SCHEDULE_ENABLE
     valueFrom:
       configMapKeyRef:
