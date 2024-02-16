@@ -1,4 +1,4 @@
-package com.wecgwm.youtube.exception.handler;
+package com.wecgwm.youtube.exception;
 
 /**
  * @author ：wecgwm

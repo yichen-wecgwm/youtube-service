@@ -11,6 +11,7 @@ import com.wecgwm.youtube.model.dto.VideoInfoDto;
 import com.wecgwm.youtube.service.MinioService;
 import com.wecgwm.youtube.service.YTDLPService;
 import com.wecgwm.youtube.service.impl.YouTubeVideoServiceImpl;
+import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -90,7 +91,7 @@ public class YoutubeServiceTest {
     }
 
     @Test
-    public void getChannelInfoTest(){
+    public void getChannelInfoTest() {
         log.info(minioService.readJson(MinioChannelArg.bucket(), "1.json", ChannelDto.class).toString());
         log.info(minioService.readJson(MinioChannelArg.bucket(), MinioChannelArg.object(), new TypeReference<List<ChannelDto>>() {
         }).toString());
@@ -98,16 +99,13 @@ public class YoutubeServiceTest {
 
     @Test
     public void searchTest() {
-        List.of(1).forEach(channelId ->{
-                    try {
+        List.of(1).forEach(channelId ->
+                Try.run(() ->
                         CompletableFuture.completedStage(channelId)
-                                        .thenApply(cId -> minioService.readJson(MinioChannelArg.bucket(), MinioChannelArg.object(), ChannelDto.class))
-                                        .thenApply(ytdlpService::search).toCompletableFuture()
-                                        .get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
+                                .thenApply(cId -> minioService.readJson(MinioChannelArg.bucket(), MinioChannelArg.object(), ChannelDto.class))
+                                .thenApply(ytdlpService::search).toCompletableFuture()
+                                .get()
+                )
         );
     }
 

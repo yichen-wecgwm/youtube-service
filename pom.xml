@@ -20,9 +20,21 @@
         <lombok.version>1.18.28</lombok.version>
         <minio.version>8.5.4</minio.version>
         <okhttp.version>4.11.0</okhttp.version>
-        <vavr.version>1.0.0-alpha-4</vavr.version>
+        <vavr.version>0.10.4</vavr.version>
         <caffeine.version>3.1.7</caffeine.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>2021.0.7</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -79,6 +91,11 @@
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
             <version>${caffeine.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-sleuth</artifactId>
         </dependency>
     </dependencies>
 

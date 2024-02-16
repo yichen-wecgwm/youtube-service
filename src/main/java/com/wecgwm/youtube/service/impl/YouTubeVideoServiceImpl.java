@@ -123,7 +123,7 @@ public class YouTubeVideoServiceImpl implements YouTubeVideoService {
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                 try (ResponseBody responseBody = response.body()) {
                     if (!response.isSuccessful()) {
-                        throw new HttpException("bilibili service Unexpected code: " + response);
+                        throw new HttpException("bilibili service unexpected code: " + response);
                     }
                     log.info("bilibili resp successful, body{}", Objects.requireNonNull(responseBody).string());
                 }
